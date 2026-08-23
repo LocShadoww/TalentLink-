@@ -1,5 +1,5 @@
 // src/screens/RegisterScreen.js
-// Màn hình Đăng ký tài khoản mới Ứng viên (Modern Teal / Navy UI)
+// Màn hình Đăng ký tài khoản mới Ứng viên / Nhà tuyển dụng (Modern Teal / Navy UI)
 
 import React, { useState } from 'react';
 import {
@@ -26,6 +26,7 @@ import {
   validatePhone,
   validatePassword,
   validateConfirmPassword,
+  validateCompanyName,
 } from '../utils/validate';
 
 const RegisterScreen = ({ navigation }) => {
@@ -37,6 +38,8 @@ const RegisterScreen = ({ navigation }) => {
     phone: '',
     password: '',
     confirmPassword: '',
+    role: 'candidate', // 'candidate' hoặc 'employer'
+    company_name: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -66,6 +69,7 @@ const RegisterScreen = ({ navigation }) => {
     if (field === 'phone') err = validatePhone(value);
     if (field === 'password') err = validatePassword(value);
     if (field === 'confirmPassword') err = validateConfirmPassword(currentForm.password, value);
+    if (field === 'company_name') err = validateCompanyName(value, currentForm.role);
 
     setErrors((prev) => ({ ...prev, [field]: err }));
   };
@@ -77,6 +81,7 @@ const RegisterScreen = ({ navigation }) => {
       phone: true,
       password: true,
       confirmPassword: true,
+      company_name: true,
     });
 
     const { isValid, errors: currentErrors } = validateRegisterForm(formData);
@@ -92,8 +97,8 @@ const RegisterScreen = ({ navigation }) => {
     if (res.success) {
       Alert.alert('Thành công 🎉', `Đã tạo tài khoản cho ${res.user.full_name}!`, [
         {
-          text: 'Vào trang chủ ngay',
-          onPress: () => navigation.navigate('MainTabs'),
+          text: 'Vào ứng dụng ngay',
+          onPress: () => navigation.navigate(res.user.role === 'employer' ? 'EmployerTabs' : 'MainTabs'),
         },
       ]);
     } else {
@@ -125,12 +130,59 @@ const RegisterScreen = ({ navigation }) => {
           <View style={styles.headerBox}>
             <Text style={styles.headerTitle}>Tạo Tài Khoản Mới</Text>
             <Text style={styles.headerSubtitle}>
-              Điền thông tin để bắt đầu tìm kiếm & ứng tuyển công việc phù hợp
+              Điền thông tin để bắt đầu trải nghiệm ứng dụng
             </Text>
           </View>
 
           {/* Register Card */}
           <View style={styles.card}>
+            {/* Role Selection */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Bạn là ai?</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleBtn,
+                    formData.role === 'candidate' && styles.roleBtnActive,
+                  ]}
+                  onPress={() => handleChange('role', 'candidate')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons 
+                    name="person-outline" 
+                    size={20} 
+                    color={formData.role === 'candidate' ? colors.textLight : colors.textPrimary} 
+                  />
+                  <Text style={[
+                    styles.roleText,
+                    formData.role === 'candidate' && styles.roleTextActive
+                  ]}>Ứng viên</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleBtn,
+                    formData.role === 'employer' && styles.roleBtnActive,
+                  ]}
+                  onPress={() => {
+                    handleChange('role', 'employer');
+                    setErrors((prev) => ({ ...prev, company_name: null }));
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons 
+                    name="business-outline" 
+                    size={20} 
+                    color={formData.role === 'employer' ? colors.textLight : colors.textPrimary} 
+                  />
+                  <Text style={[
+                    styles.roleText,
+                    formData.role === 'employer' && styles.roleTextActive
+                  ]}>Nhà tuyển dụng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Input 1: Họ tên */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>
@@ -150,7 +202,7 @@ const RegisterScreen = ({ navigation }) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="VD: Nguyễn Văn Sinh Viên"
+                  placeholder="VD: Nguyễn Văn A"
                   placeholderTextColor={colors.textMuted}
                   value={formData.full_name}
                   onChangeText={(val) => handleChange('full_name', val)}
@@ -161,6 +213,39 @@ const RegisterScreen = ({ navigation }) => {
                 <Text style={styles.errorText}>{errors.full_name}</Text>
               )}
             </View>
+
+            {/* Company Name (Chỉ hiển thị nếu role là employer) */}
+            {formData.role === 'employer' && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Tên công ty / Cửa hàng <Text style={styles.required}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    errors.company_name && touched.company_name && styles.inputError,
+                  ]}
+                >
+                  <Ionicons
+                    name="business-outline"
+                    size={20}
+                    color={colors.textMuted}
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="VD: Cửa hàng Tiện lợi 24h"
+                    placeholderTextColor={colors.textMuted}
+                    value={formData.company_name}
+                    onChangeText={(val) => handleChange('company_name', val)}
+                    onBlur={() => handleBlur('company_name')}
+                  />
+                </View>
+                {errors.company_name && touched.company_name && (
+                  <Text style={styles.errorText}>{errors.company_name}</Text>
+                )}
+              </View>
+            )}
 
             {/* Input 2: Email */}
             <View style={styles.inputGroup}>
@@ -181,7 +266,7 @@ const RegisterScreen = ({ navigation }) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="VD: sinhvien@gmail.com"
+                  placeholder="VD: example@gmail.com"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -391,6 +476,34 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  roleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceVariant,
+    gap: 6,
+  },
+  roleBtnActive: {
+    backgroundColor: colors.primaryMain,
+    borderColor: colors.primaryMain,
+  },
+  roleText: {
+    ...typography.styles.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  roleTextActive: {
+    color: colors.textLight,
   },
   inputGroup: {
     marginBottom: 16,

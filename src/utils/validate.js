@@ -15,6 +15,21 @@ export const validateFullName = (name) => {
 };
 
 /**
+ * Validate Tên công ty (Bắt buộc nếu là Nhà tuyển dụng)
+ */
+export const validateCompanyName = (name, role) => {
+  if (role === 'employer') {
+    if (!name || name.trim().length === 0) {
+      return 'Vui lòng nhập tên công ty/cửa hàng!';
+    }
+    if (name.trim().length < 2) {
+      return 'Tên công ty phải có ít nhất 2 ký tự';
+    }
+  }
+  return null;
+};
+
+/**
  * Validate Số điện thoại VN (Bắt buộc, đúng định dạng số Việt Nam 10 chữ số bắt đầu bằng 0)
  */
 export const validatePhone = (phone) => {
@@ -106,6 +121,9 @@ export const validateRegisterForm = (formData) => {
 
   const confirmErr = validateConfirmPassword(formData.password, formData.confirmPassword);
   if (confirmErr) errors.confirmPassword = confirmErr;
+
+  const companyErr = validateCompanyName(formData.company_name, formData.role);
+  if (companyErr) errors.company_name = companyErr;
 
   return {
     isValid: Object.keys(errors).length === 0,

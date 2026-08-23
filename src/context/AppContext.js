@@ -16,7 +16,10 @@ import {
   fetchFavoritesFromDB,
   fetchFavoriteIdsFromDB,
   toggleFavoriteInDB,
+  subscribeToJobs,
 } from '../db/database';
+
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export const AppContext = createContext();
 
@@ -28,6 +31,8 @@ export const DEFAULT_FILTERS = {
 };
 
 export const AppProvider = ({ children }) => {
+  const { expoPushToken } = usePushNotifications();
+
   const [dbReady, setDbReady] = useState(false);
   const [dbError, setDbError] = useState(null);
 
@@ -72,16 +77,22 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
+  const [jobsLastDoc, setJobsLastDoc] = useState(null);
+  const [hasMoreJobs, setHasMoreJobs] = useState(true);
+  const [loadingMoreJobs, setLoadingMoreJobs] = useState(false);
+
   /**
-   * Tải danh sách công việc từ DB theo filters hiện tại
+   * Tải danh sách công việc từ DB (có phân trang)
    */
   const loadJobs = useCallback(async (customFilters = null) => {
     setLoadingJobs(true);
     setErrorJobs(null);
     try {
       const activeFilters = customFilters || filters;
-      const data = await fetchJobsFromDB(activeFilters);
+      const { data, lastDoc } = await fetchJobsFromDB(activeFilters, null, 10);
       setJobs(data || []);
+      setJobsLastDoc(lastDoc);
+      setHasMoreJobs(data.length === 10); // Nếu fetch được đúng limit thì có thể còn
     } catch (err) {
       console.error('Lỗi loadJobs:', err);
       setErrorJobs('Không thể kết nối đến dữ liệu việc làm.');
@@ -89,6 +100,29 @@ export const AppProvider = ({ children }) => {
       setLoadingJobs(false);
     }
   }, [filters]);
+
+  /**
+   * Tải thêm công việc
+   */
+  const loadMoreJobs = useCallback(async () => {
+    if (loadingMoreJobs || !hasMoreJobs || !jobsLastDoc) return;
+    
+    setLoadingMoreJobs(true);
+    try {
+      const { data, lastDoc } = await fetchJobsFromDB(filters, jobsLastDoc, 10);
+      if (data && data.length > 0) {
+        setJobs(prev => [...prev, ...data]);
+        setJobsLastDoc(lastDoc);
+        setHasMoreJobs(data.length === 10);
+      } else {
+        setHasMoreJobs(false);
+      }
+    } catch (err) {
+      console.error('Lỗi loadMoreJobs:', err);
+    } finally {
+      setLoadingMoreJobs(false);
+    }
+  }, [filters, jobsLastDoc, hasMoreJobs, loadingMoreJobs]);
 
   /**
    * Tải hồ sơ ứng viên
@@ -111,7 +145,7 @@ export const AppProvider = ({ children }) => {
   const loadApplications = useCallback(async (currentUserId = null) => {
     setLoadingApplications(true);
     try {
-      const userId = currentUserId || user?.id;
+      const userId = currentUserId || user?.uid || user?.id;
       if (!userId) {
         setApplications([]);
         return;
@@ -131,7 +165,7 @@ export const AppProvider = ({ children }) => {
   const loadFavorites = useCallback(async (currentUserId = null) => {
     setLoadingFavorites(true);
     try {
-      const userId = currentUserId || user?.id;
+      const userId = currentUserId || user?.uid || user?.id;
       if (!userId) {
         setFavorites([]);
         setFavoriteIds([]);
@@ -140,7 +174,7 @@ export const AppProvider = ({ children }) => {
       const favList = await fetchFavoritesFromDB(userId);
       const favIds = await fetchFavoriteIdsFromDB(userId);
       setFavorites(favList || []);
-      setFavoriteIds((favIds || []).map(Number));
+      setFavoriteIds((favIds || []).map(String));
     } catch (err) {
       console.error('Lỗi loadFavorites:', err);
     } finally {
@@ -176,15 +210,25 @@ export const AppProvider = ({ children }) => {
 
   // Cập nhật lại đơn ứng tuyển và tin lưu mỗi khi user thay đổi
   useEffect(() => {
-    if (user?.id) {
-      loadApplications(user.id);
-      loadFavorites(user.id);
+    const userId = user?.uid || user?.id;
+    if (userId) {
+      loadApplications(userId);
+      loadFavorites(userId);
+      
+      // Save push token if available
+      if (expoPushToken) {
+        import('firebase/firestore').then(({ doc, updateDoc }) => {
+          import('../config/firebase').then(({ db }) => {
+            updateDoc(doc(db, 'users', userId), { pushToken: expoPushToken }).catch(console.warn);
+          });
+        });
+      }
     } else {
       setApplications([]);
       setFavorites([]);
       setFavoriteIds([]);
     }
-  }, [user]);
+  }, [user, expoPushToken]);
 
   /* ==========================================================================
      AUTH ACTIONS (Đăng nhập, Đăng ký, Đăng xuất)
@@ -198,8 +242,12 @@ export const AppProvider = ({ children }) => {
     if (res.success && res.user) {
       setUser(res.user);
       await AsyncStorage.setItem('@current_user', JSON.stringify(res.user));
-      await loadApplications(res.user.id);
-      await loadFavorites(res.user.id);
+      const userId = res.user?.uid || res.user?.id;
+      await Promise.all([
+        loadApplications(userId),
+        loadFavorites(userId),
+        loadProfile(),
+      ]);
     }
     return res;
   };
@@ -212,8 +260,12 @@ export const AppProvider = ({ children }) => {
     if (res.success && res.user) {
       setUser(res.user);
       await AsyncStorage.setItem('@current_user', JSON.stringify(res.user));
-      await loadApplications(res.user.id);
-      await loadFavorites(res.user.id);
+      const userId = res.user?.uid || res.user?.id;
+      await Promise.all([
+        loadApplications(userId),
+        loadFavorites(userId),
+        loadProfile(),
+      ]);
     }
     return res;
   };
@@ -225,6 +277,7 @@ export const AppProvider = ({ children }) => {
     try {
       await AsyncStorage.removeItem('@current_user');
       setUser(null);
+      setProfile(null);
       setApplications([]);
       setFavorites([]);
       setFavoriteIds([]);
@@ -266,10 +319,10 @@ export const AppProvider = ({ children }) => {
       return { success: false, requireAuth: true, message: 'Bạn cần đăng nhập để ứng tuyển công việc này!' };
     }
 
-    const numId = Number(jobId);
     try {
-      const res = await addApplicationToDB(numId, user.id);
-      await loadApplications(user.id);
+      const userId = user?.uid || user?.id;
+      const res = await addApplicationToDB(jobId, userId);
+      await loadApplications(userId);
       return res;
     } catch (err) {
       console.error('Lỗi applyJob:', err);
@@ -282,10 +335,10 @@ export const AppProvider = ({ children }) => {
       return { success: false, requireAuth: true, message: 'Vui lòng đăng nhập!' };
     }
 
-    const numId = Number(jobId);
     try {
-      const res = await cancelApplicationInDB(numId, user.id);
-      await loadApplications(user.id);
+      const userId = user?.uid || user?.id;
+      const res = await cancelApplicationInDB(jobId, userId);
+      await loadApplications(userId);
       return res;
     } catch (err) {
       console.error('Lỗi cancelApplication:', err);
@@ -298,10 +351,10 @@ export const AppProvider = ({ children }) => {
       return { isFavorite: false, requireAuth: true, message: 'Bạn cần đăng nhập để lưu tin yêu thích!' };
     }
 
-    const numId = Number(jobId);
     try {
-      const res = await toggleFavoriteInDB(numId, user.id);
-      await loadFavorites(user.id);
+      const userId = user?.uid || user?.id;
+      const res = await toggleFavoriteInDB(jobId, userId);
+      await loadFavorites(userId);
       return res;
     } catch (err) {
       console.error('Lỗi toggleFavorite:', err);
@@ -310,14 +363,12 @@ export const AppProvider = ({ children }) => {
   };
 
   const isFavorite = (jobId) => {
-    const numId = Number(jobId);
-    return favoriteIds.includes(numId);
+    return favoriteIds.includes(jobId) || favoriteIds.includes(String(jobId)) || favoriteIds.includes(Number(jobId));
   };
 
   const hasApplied = (jobId) => {
-    const numId = Number(jobId);
     return applications.some(
-      (app) => Number(app.id) === numId || Number(app.job_id) === numId
+      (app) => String(app.id) === String(jobId) || String(app.job_id) === String(jobId)
     );
   };
 
@@ -340,6 +391,9 @@ export const AppProvider = ({ children }) => {
         loadingJobs,
         errorJobs,
         loadJobs,
+        hasMoreJobs,
+        loadMoreJobs,
+        loadingMoreJobs,
 
         // Filters
         filters,

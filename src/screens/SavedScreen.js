@@ -19,7 +19,7 @@ const SavedScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       if (user) {
-        loadFavorites(user.id);
+        loadFavorites(user.uid || user.id);
       }
     }, [user, loadFavorites])
   );

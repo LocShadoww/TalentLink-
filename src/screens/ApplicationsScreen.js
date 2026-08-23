@@ -21,7 +21,7 @@ const ApplicationsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       if (user) {
-        loadApplications(user.id);
+        loadApplications(user.uid || user.id);
       }
     }, [user, loadApplications])
   );

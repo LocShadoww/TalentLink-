@@ -47,19 +47,22 @@ const HomeScreen = ({ navigation }) => {
     isFavorite,
     toggleFavorite,
     profile,
+    hasMoreJobs,
+    loadMoreJobs,
+    loadingMoreJobs,
   } = useApp();
 
   const [searchInput, setSearchInput] = useState(filters.searchQuery || '');
   const [refreshing, setRefreshing] = useState(false);
   const [showTipsModal, setShowTipsModal] = useState(false);
 
-  // Debounce tìm kiếm (300ms)
+  // Debounce tìm kiếm (800ms)
   useEffect(() => {
     const handler = setTimeout(() => {
       if (searchInput !== filters.searchQuery) {
         updateFilters({ searchQuery: searchInput });
       }
-    }, 300);
+    }, 800);
 
     return () => clearTimeout(handler);
   }, [searchInput]);
@@ -71,34 +74,6 @@ const HomeScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  /**
-   * Lọc triệt để (Strict Filter) danh sách công việc theo Danh mục & Từ khóa tìm kiếm
-   */
-  const filteredJobs = useMemo(() => {
-    if (!jobs || !Array.isArray(jobs)) return [];
-
-    const selectedCategory = filters.category || 'Tất cả';
-    const query = (searchInput || '').trim().toLowerCase();
-
-    return jobs.filter((job) => {
-      // 1. Lọc theo Danh mục / Ngành nghề (Chính xác 100%)
-      const matchCategory =
-        selectedCategory === 'Tất cả' ||
-        (job.category &&
-          job.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase());
-
-      // 2. Lọc theo Từ khóa tìm kiếm
-      const matchSearch =
-        !query ||
-        (job.title && job.title.toLowerCase().includes(query)) ||
-        (job.location && job.location.toLowerCase().includes(query)) ||
-        (job.company_name && job.company_name.toLowerCase().includes(query)) ||
-        (job.skills_tags && job.skills_tags.toLowerCase().includes(query)) ||
-        (job.requirements && job.requirements.toLowerCase().includes(query));
-
-      return matchCategory && matchSearch;
-    });
-  }, [jobs, filters.category, searchInput]);
 
   // Đếm số lượng bộ lọc đang được kích hoạt
   const activeFilterCount =
@@ -227,11 +202,11 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>
             {filters.category !== 'Tất cả' ? `Việc làm ${filters.category}` : 'Danh sách việc làm tốt nhất'}
           </Text>
-          <Text style={styles.jobCountText}>{filteredJobs.length} bài đăng</Text>
+          <Text style={styles.jobCountText}>{jobs.length} bài đăng</Text>
         </View>
       </View>
     ),
-    [firstName, profile, searchInput, activeFilterCount, filters, updateFilters, filteredJobs.length, navigation]
+    [firstName, profile, searchInput, activeFilterCount, filters, updateFilters, jobs.length, navigation]
   );
 
   if (loadingJobs && !refreshing) {
@@ -251,10 +226,13 @@ const HomeScreen = ({ navigation }) => {
   return (
     <ScreenWrapper>
       <FlatList
-        data={filteredJobs}
+        data={jobs}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderJobItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={renderHeader()}
+        onEndReached={loadMoreJobs}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMoreJobs ? <LoadingState /> : null}
         ListEmptyComponent={
           <EmptyState
             icon="search-outline"
@@ -281,6 +259,8 @@ const HomeScreen = ({ navigation }) => {
             tintColor={colors.primaryMain}
           />
         }
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       />
 
       {/* Modal Cẩm nang Phỏng vấn & Viết CV (Banner 3 Action) */}

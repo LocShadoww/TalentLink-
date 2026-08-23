@@ -257,16 +257,18 @@ const JobDetailScreen = ({ route, navigation }) => {
         <Text style={styles.headerTitle} numberOfLines={1}>
           Chi tiết công việc
         </Text>
-        <TouchableOpacity
-          style={styles.favHeaderButton}
-          onPress={handleToggleFavoriteBtn}
-        >
-          <Ionicons
-            name={favorited ? 'heart' : 'heart-outline'}
-            size={24}
-            color={favorited ? colors.error : colors.textLight}
-          />
-        </TouchableOpacity>
+        {user?.role !== 'employer' && (
+          <TouchableOpacity
+            style={styles.favHeaderButton}
+            onPress={handleToggleFavoriteBtn}
+          >
+            <Ionicons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={24}
+              color={favorited ? colors.error : colors.textLight}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -277,7 +279,7 @@ const JobDetailScreen = ({ route, navigation }) => {
               source={{
                 uri:
                   job.company_logo ||
-                  'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name || 'Company')}&background=random&color=fff&size=150`,
               }}
               style={styles.companyLogo}
             />
@@ -430,74 +432,97 @@ const JobDetailScreen = ({ route, navigation }) => {
             <Text style={styles.contactText}>
               {job.contact_info || 'Liên hệ trực tiếp qua số tổng đài phòng nhân sự.'}
             </Text>
+            {user?.role !== 'employer' && job.employer_id && (
+              <TouchableOpacity 
+                style={styles.chatButton}
+                onPress={() => {
+                  if (!user) {
+                    navigation.navigate('Login');
+                    return;
+                  }
+                  navigation.navigate('ChatDetail', {
+                    conversationId: null,
+                    receiverId: job.employer_id,
+                    receiverName: job.company_name || 'Nhà tuyển dụng'
+                  });
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={16} color={colors.primaryMain} />
+                <Text style={styles.chatButtonText}>Nhắn tin cho Nhà tuyển dụng</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
         {/* Ô Mini Map Định vị vị trí tuyển dụng */}
-        <View style={styles.miniMapCard}>
-          <View style={styles.miniMapHeader}>
-            <View style={styles.miniMapTitleGroup}>
-              <Ionicons name="map-outline" size={18} color={colors.primaryMain} />
-              <Text style={styles.miniMapTitle}>Vị trí tuyển dụng trên bản đồ</Text>
+        {job.latitude && job.longitude ? (
+          <View style={styles.miniMapCard}>
+            <View style={styles.miniMapHeader}>
+              <View style={styles.miniMapTitleGroup}>
+                <Ionicons name="map-outline" size={18} color={colors.primaryMain} />
+                <Text style={styles.miniMapTitle}>Vị trí tuyển dụng trên bản đồ</Text>
+              </View>
+              <TouchableOpacity style={styles.navigateBtn} onPress={handleOpenNavigation}>
+                <Ionicons name="navigate-outline" size={14} color={colors.primaryMain} />
+                <Text style={styles.navigateBtnText}>Chỉ đường</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.navigateBtn} onPress={handleOpenNavigation}>
-              <Ionicons name="navigate-outline" size={14} color={colors.primaryMain} />
-              <Text style={styles.navigateBtnText}>Chỉ đường</Text>
-            </TouchableOpacity>
-          </View>
 
-          <View style={styles.miniMapPlaceholder}>
-            <Ionicons name="location-sharp" size={32} color={colors.primaryMain} />
-            <Text style={styles.miniMapAddressText} numberOfLines={2}>
-              {job.location}
-            </Text>
-            <Text style={styles.miniMapCoordText}>
-              Tọa độ GPS: {job.latitude || 10.7769}, {job.longitude || 106.7009}
-            </Text>
+            <View style={styles.miniMapPlaceholder}>
+              <Ionicons name="location-sharp" size={32} color={colors.primaryMain} />
+              <Text style={styles.miniMapAddressText} numberOfLines={2}>
+                {job.location}
+              </Text>
+              <Text style={styles.miniMapCoordText}>
+                Tọa độ GPS: {job.latitude}, {job.longitude}
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : null}
       </ScrollView>
 
       {/* Bottom Sticky Action Bar */}
-      <View style={styles.bottomBar}>
-        {applied ? (
-          <View style={styles.appliedActionBar}>
-            <View style={styles.appliedStatusBox}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.accentGreen} />
-              <Text style={styles.appliedStatusText}>Đã ứng tuyển</Text>
-            </View>
+      {user?.role !== 'employer' && (
+        <View style={styles.bottomBar}>
+          {applied ? (
+            <View style={styles.appliedActionBar}>
+              <View style={styles.appliedStatusBox}>
+                <Ionicons name="checkmark-circle" size={18} color={colors.accentGreen} />
+                <Text style={styles.appliedStatusText}>Đã ứng tuyển</Text>
+              </View>
 
+              <TouchableOpacity
+                style={styles.cancelApplyButton}
+                onPress={handleCancelApplication}
+                disabled={canceling}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trash-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
+                <Text style={styles.cancelApplyText}>
+                  {canceling ? 'Đang hủy...' : 'Hủy ứng tuyển'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <TouchableOpacity
-              style={styles.cancelApplyButton}
-              onPress={handleCancelApplication}
-              disabled={canceling}
+              style={[styles.applyButton, applying && { opacity: 0.7 }]}
+              onPress={handleApply}
+              disabled={applying}
               activeOpacity={0.8}
             >
-              <Ionicons name="trash-outline" size={16} color={colors.error} style={{ marginRight: 6 }} />
-              <Text style={styles.cancelApplyText}>
-                {canceling ? 'Đang hủy...' : 'Hủy ứng tuyển'}
+              <Ionicons
+                name="paper-plane-outline"
+                size={20}
+                color={colors.textLight}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.applyButtonText}>
+                {applying ? 'Đang gửi đơn...' : 'Ứng tuyển ngay'}
               </Text>
             </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.applyButton, applying && { opacity: 0.7 }]}
-            onPress={handleApply}
-            disabled={applying}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="paper-plane-outline"
-              size={20}
-              color={colors.textLight}
-              style={{ marginRight: 8 }}
-            />
-            <Text style={styles.applyButtonText}>
-              {applying ? 'Đang gửi đơn...' : 'Ứng tuyển ngay'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          )}
+        </View>
+      )}
     </ScreenWrapper>
   );
 };
@@ -737,6 +762,24 @@ const styles = StyleSheet.create({
     ...typography.styles.bodyMedium,
     color: colors.textPrimary,
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primaryMain,
+    marginTop: 8,
+  },
+  chatButtonText: {
+    ...typography.styles.button,
+    color: colors.primaryMain,
+    marginLeft: 6,
+    fontSize: 14,
   },
   miniMapCard: {
     backgroundColor: colors.surface,

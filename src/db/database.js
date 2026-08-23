@@ -1,52 +1,36 @@
 // src/db/database.js
-// Module Quản trị CSDL SQLite & Fallback Storage (AsyncStorage) cho Expo Go (Synced 6 Standard Categories)
+// Module Quản trị CSDL - Tích hợp Firebase Auth & Firestore
 
-import * as SQLite from 'expo-sqlite';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, db } from '../config/firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, 
+  query, where, deleteDoc, addDoc, serverTimestamp, writeBatch, limit, startAfter, orderBy
+} from 'firebase/firestore';
 
-const DB_NAME = 'job_finder.db';
-let dbInstance = null;
-let useFallbackMode = false;
-
-/**
- * Trợ giúp lấy thể hiện DB Singleton an toàn không bao giờ bị null
- */
-export const getDBConnection = async () => {
-  if (dbInstance) return dbInstance;
-  try {
-    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
-    return dbInstance;
-  } catch (e) {
-    console.warn('⚠️ SQLite Open error:', e);
-    return null;
-  }
-};
-
-// Các Key lưu trữ cho Chế độ Fallback AsyncStorage
-const KEYS = {
-  JOBS: '@job_finder_jobs',
-  USERS: '@job_finder_users',
-  CURRENT_USER: '@current_user',
-  PROFILE: '@job_finder_profile',
-  APPLICATIONS: '@job_finder_applications',
-  FAVORITES: '@job_finder_favorites',
+export const normalizeString = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 };
 
 /**
  * Dữ liệu seed 15 tin tuyển dụng mẫu chia đều cho 6 nhóm ngành nghề cố định:
- * 1. "Công nghệ thông tin" (3 jobs)
- * 2. "Phục vụ & Nhà hàng" (3 jobs)
- * 3. "Bán hàng & Thu ngân" (3 jobs)
- * 4. "Gia sư & Giáo dục" (2 jobs)
- * 5. "Marketing & Truyền thông" (2 jobs)
- * 6. "Giao hàng & Lao động" (2 jobs)
  */
 export const SEED_JOBS = [
-  // --------------------------------------------------------------------------
-  // NHÓM 1: CÔNG NGHỆ THÔNG TIN (3 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 1: CÔNG NGHỆ THÔNG TIN
   {
-    id: 1,
+    id: '1',
     title: 'Lập trình viên Frontend React/JS (Part-time / Remote)',
     company_name: 'Digital Agency Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=150&q=80',
@@ -65,7 +49,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
   },
   {
-    id: 2,
+    id: '2',
     title: 'Thực tập sinh Thiết kế Web & Hỗ trợ Kỹ thuật IT',
     company_name: 'Văn phòng Công nghệ DTHU',
     company_logo: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=150&q=80',
@@ -84,7 +68,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
   },
   {
-    id: 3,
+    id: '3',
     title: 'Nhân viên Quản trị Website & Cài đặt Hệ thống',
     company_name: 'Cửa hàng Tin học Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=150&q=80',
@@ -102,12 +86,9 @@ export const SEED_JOBS = [
     contact_info: 'SĐT / Zalo: 0918 222 333 (Anh Hải - Quản lý kỹ thuật)',
     created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
   },
-
-  // --------------------------------------------------------------------------
-  // NHÓM 2: PHỤC VỤ & NHÀ HÀNG (3 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 2: PHỤC VỤ & NHÀ HÀNG
   {
-    id: 4,
+    id: '4',
     title: 'Nhân viên Phục vụ Quán Cafe Trà Sữa',
     company_name: 'HighCafe Chợ Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=150&q=80',
@@ -122,11 +103,11 @@ export const SEED_JOBS = [
     schedule: 'Ca sáng (7h-12h) hoặc Ca tối (17h-22h)',
     description: 'Pha chế đồ uống cơ bản, nhận order từ khách hàng, giữ gìn vệ sinh khu vực làm việc và hỗ trợ thanh toán tại quầy.',
     requirements: 'Nhanh nhẹn, trung thực, ưu tiên sinh viên DTHU có thể xoay ca theo tuần, không yêu cầu kinh nghiệm.',
-    contact_info: 'Hotline / Zalo: 0901 234 567 (Anh Hùng - Quản lý HighCafe Chợ Cao Lãnh)',
+    contact_info: 'Hotline / Zalo: 0901 234 567',
     created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
   },
   {
-    id: 5,
+    id: '5',
     title: 'Phụ bếp & Pha chế Ca Linh Hoạt',
     company_name: 'Nhà hàng Ẩm thực Vincom Plaza',
     company_logo: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=150&q=80',
@@ -145,7 +126,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
   {
-    id: 6,
+    id: '6',
     title: 'Nhân viên Order & Bưng bê Căn tin DTHU',
     company_name: 'Căn tin Trung tâm DTHU',
     company_logo: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=150&q=80',
@@ -163,12 +144,9 @@ export const SEED_JOBS = [
     contact_info: 'Đăng ký trực tiếp tại Quầy Quản lý Căn tin DTHU - SĐT: 0912 345 678',
     created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
   },
-
-  // --------------------------------------------------------------------------
-  // NHÓM 3: BÁN HÀNG & THU NGÂN (3 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 3: BÁN HÀNG & THU NGÂN
   {
-    id: 7,
+    id: '7',
     title: 'Nhân viên Thu ngân Siêu thị Co.opmart Cao Lãnh',
     company_name: 'Co.opmart Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=150&q=80',
@@ -187,7 +165,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 7 * 86400000).toISOString(),
   },
   {
-    id: 8,
+    id: '8',
     title: 'Nhân viên Bán hàng & Tư vấn Thời trang',
     company_name: 'Showroom Thời trang Vincom',
     company_logo: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=150&q=80',
@@ -206,7 +184,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 8 * 86400000).toISOString(),
   },
   {
-    id: 9,
+    id: '9',
     title: 'Nhân viên Sắp xếp kệ hàng & Kiểm kho',
     company_name: 'Bách Hóa Xanh Phường 2',
     company_logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&q=80',
@@ -224,12 +202,9 @@ export const SEED_JOBS = [
     contact_info: 'Quản lý Cửa hàng Bách Hóa Xanh P2 - SĐT: 0977 888 999',
     created_at: new Date(Date.now() - 9 * 86400000).toISOString(),
   },
-
-  // --------------------------------------------------------------------------
-  // NHÓM 4: GIA SƯ & GIÁO DỤC (2 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 4: GIA SƯ & GIÁO DỤC
   {
-    id: 10,
+    id: '10',
     title: 'Gia sư Dạy kèm Toán - Tin học Cấp 2/3',
     company_name: 'Nhóm Gia sư Sinh viên DTHU',
     company_logo: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=150&q=80',
@@ -244,11 +219,11 @@ export const SEED_JOBS = [
     schedule: 'Tuần 3 buổi tối (18h30 - 20h00)',
     description: 'Kèm kiến thức Toán & Tin học cơ bản cho học sinh THCS/THPT, dò bài tập về nhà và ôn thi cuối kỳ.',
     requirements: 'Sinh viên Sư phạm Toán hoặc CNTT DTHU học lực Khá/Giỏi, kiên nhẫn với học sinh.',
-    contact_info: 'Hotline / Zalo: 0912 345 678 (Chị Thảo - Điều phối Gia sư DTHU)',
+    contact_info: 'Hotline / Zalo: 0912 345 678',
     created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
   },
   {
-    id: 11,
+    id: '11',
     title: 'Trợ giảng Tiếng Anh cho Trẻ em',
     company_name: 'Trung tâm Ngoại ngữ Phường 1',
     company_logo: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
@@ -266,12 +241,9 @@ export const SEED_JOBS = [
     contact_info: 'Email: trogiang.english@center.edu.vn - SĐT: 0988 776 655',
     created_at: new Date(Date.now() - 11 * 86400000).toISOString(),
   },
-
-  // --------------------------------------------------------------------------
-  // NHÓM 5: MARKETING & TRUYỀN THÔNG (2 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 5: MARKETING & TRUYỀN THÔNG
   {
-    id: 12,
+    id: '12',
     title: 'Thực tập sinh Sáng tạo Nội dung / Video ngắn TikTok',
     company_name: 'Shop Thời trang Trẻ Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&q=80',
@@ -286,11 +258,11 @@ export const SEED_JOBS = [
     schedule: 'Theo sản phẩm 3 video/tuần',
     description: 'Lên ý tưởng kịch bản, quay clip ngắn tư vấn mặc đẹp bằng điện thoại và dựng video đăng tải TikTok / Reels.',
     requirements: 'Thích sáng tạo nội dung, có gu thẩm mỹ, biết sử dụng phần mềm CapCut.',
-    contact_info: 'Zalo: 0977 888 999 (Chị Mai - Chủ Shop)',
+    contact_info: 'Zalo: 0977 888 999',
     created_at: new Date(Date.now() - 12 * 86400000).toISOString(),
   },
   {
-    id: 13,
+    id: '13',
     title: 'Cộng tác viên Chụp ảnh & Viết bài Fanpage',
     company_name: 'Khu Ẩm thực Văn Miếu Studio',
     company_logo: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
@@ -308,12 +280,9 @@ export const SEED_JOBS = [
     contact_info: 'Email: media.vanmieu@studio.vn - SĐT: 0988 776 655',
     created_at: new Date(Date.now() - 13 * 86400000).toISOString(),
   },
-
-  // --------------------------------------------------------------------------
-  // NHÓM 6: GIAO HÀNG & LAO ĐỘNG (2 Jobs)
-  // --------------------------------------------------------------------------
+  // NHÓM 6: GIAO HÀNG & LAO ĐỘNG
   {
-    id: 14,
+    id: '14',
     title: 'Nhân viên Giao hàng Ca Sinh Viên',
     company_name: 'Dịch vụ Giao vận Bến Xe',
     company_logo: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=150&q=80',
@@ -332,7 +301,7 @@ export const SEED_JOBS = [
     created_at: new Date(Date.now() - 14 * 86400000).toISOString(),
   },
   {
-    id: 15,
+    id: '15',
     title: 'Đóng gói và Phân loại Bưu kiện Theo Ca',
     company_name: 'Kho Vận Bệnh viện ĐK',
     company_logo: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=150&q=80',
@@ -352,203 +321,41 @@ export const SEED_JOBS = [
   },
 ];
 
-const DEFAULT_PROFILE = {
-  id: 1,
-  full_name: 'Nguyễn Văn Sinh Viên',
-  phone: '0912345678',
-  email: 'sinhvien.it@gmail.com',
-  skills: 'React Native, JavaScript, HTML/CSS, Tiếng Anh giao tiếp',
-  bio: 'Sinh viên năm 3 ngành Công nghệ Thông tin, cần tìm việc parttime hoặc dự án freelance phù hợp thời gian học.',
-  avatar: null,
+export const getDBConnection = async () => {
+  return true; // Dummy logic to prevent breaking UI imports
 };
 
 /**
- * Khởi tạo Database SQLite hoặc Fallback AsyncStorage
+ * Khởi tạo Database Firebase: Seed jobs nếu collection jobs rỗng
  */
 export const initDatabase = async () => {
   try {
-    console.log('--- Đang khởi tạo SQLite Database ---');
-    const db = await getDBConnection();
-    if (!db) {
-      throw new Error('Khởi tạo SQLite DB thất bại');
+    const jobsRef = collection(db, 'jobs');
+    const snapshot = await getDocs(query(jobsRef));
+    
+    if (snapshot.empty) {
+      console.log('--- Firebase: jobs collection is empty. Seeding 15 sample jobs... ---');
+      const batch = writeBatch(db);
+      for (const item of SEED_JOBS) {
+        const docRef = doc(jobsRef, String(item.id));
+        batch.set(docRef, {
+          ...item,
+          title_normalized: normalizeString(item.title),
+          employer_id: 'seed_employer_id',
+          status: 'active',
+          latitude: Number(item.latitude),
+          longitude: Number(item.longitude),
+        });
+      }
+      await batch.commit();
+      console.log('--- Seeding completed. ---');
+    } else {
+      console.log('--- Firebase: Database đã được khởi tạo ---');
     }
-
-    // Luôn DROP TABLE IF EXISTS jobs một lần để ép SQLite nạp 100% danh sách 15 việc làm phân chia 6 ngành nghề chuẩn
-    await db.execAsync('DROP TABLE IF EXISTS jobs;');
-
-    // 1. Tạo bảng users
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        full_name TEXT NOT NULL,
-        phone TEXT,
-        role TEXT DEFAULT 'candidate',
-        created_at TEXT
-      );
-    `);
-
-    // 2. Tạo bảng jobs với đầy đủ các cột chuẩn
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        company_name TEXT,
-        company_logo TEXT,
-        category TEXT NOT NULL,
-        salary_min INTEGER,
-        salary_max INTEGER,
-        work_type TEXT NOT NULL,
-        location TEXT NOT NULL,
-        latitude REAL,
-        longitude REAL,
-        skills_tags TEXT,
-        schedule TEXT,
-        description TEXT,
-        requirements TEXT,
-        contact_info TEXT,
-        created_at TEXT
-      );
-    `);
-
-    // Thực hiện ALTER TABLE an toàn nếu bảng bị thiếu cột
-    const addColumnSafe = async (tableName, colName, type) => {
-      try {
-        await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${colName} ${type};`);
-      } catch (e) {}
-    };
-
-    await addColumnSafe('jobs', 'salary_min', 'INTEGER');
-    await addColumnSafe('jobs', 'salary_max', 'INTEGER');
-    await addColumnSafe('jobs', 'company_name', 'TEXT');
-    await addColumnSafe('jobs', 'company_logo', 'TEXT');
-    await addColumnSafe('jobs', 'latitude', 'REAL');
-    await addColumnSafe('jobs', 'longitude', 'REAL');
-    await addColumnSafe('jobs', 'skills_tags', 'TEXT');
-
-    // 3. Tạo bảng profile
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS profile (
-        id INTEGER PRIMARY KEY,
-        full_name TEXT NOT NULL,
-        phone TEXT NOT NULL,
-        email TEXT NOT NULL,
-        skills TEXT,
-        bio TEXT,
-        avatar TEXT
-      );
-    `);
-
-    await addColumnSafe('profile', 'avatar', 'TEXT');
-
-    // 4. Tạo bảng applications (có user_id)
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS applications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        job_id INTEGER,
-        status TEXT DEFAULT 'pending',
-        applied_at TEXT
-      );
-    `);
-
-    await addColumnSafe('applications', 'user_id', 'INTEGER');
-
-    // 5. Tạo bảng favorites (có user_id)
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS favorites (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        job_id INTEGER
-      );
-    `);
-
-    await addColumnSafe('favorites', 'user_id', 'INTEGER');
-
-    // Luôn làm sạch và seed lại 100% dữ liệu mới nhất chia đều 6 ngành nghề
-    await db.execAsync('DELETE FROM jobs;');
-    for (const item of SEED_JOBS) {
-      await db.runAsync(
-        `INSERT INTO jobs (id, title, company_name, company_logo, category, salary_min, salary_max, work_type, location, latitude, longitude, skills_tags, schedule, description, requirements, contact_info, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-        [
-          Number(item.id),
-          String(item.title),
-          String(item.company_name || ''),
-          String(item.company_logo || ''),
-          String(item.category),
-          Number(item.salary_min),
-          Number(item.salary_max),
-          String(item.work_type),
-          String(item.location),
-          Number(item.latitude),
-          Number(item.longitude),
-          String(item.skills_tags || ''),
-          String(item.schedule || ''),
-          String(item.description || ''),
-          String(item.requirements || ''),
-          String(item.contact_info || ''),
-          String(item.created_at || ''),
-        ]
-      );
-    }
-
-    // Seed profile mẫu nếu rỗng
-    const profCount = await db.getFirstAsync('SELECT COUNT(*) as count FROM profile;');
-    if (!profCount || profCount.count === 0) {
-      await db.runAsync(
-        `INSERT INTO profile (id, full_name, phone, email, skills, bio, avatar) VALUES (1, ?, ?, ?, ?, ?, ?);`,
-        [
-          DEFAULT_PROFILE.full_name,
-          DEFAULT_PROFILE.phone,
-          DEFAULT_PROFILE.email,
-          DEFAULT_PROFILE.skills,
-          DEFAULT_PROFILE.bio,
-          DEFAULT_PROFILE.avatar,
-        ]
-      );
-    }
-
-    useFallbackMode = false;
-    console.log('--- SQLite Database khởi tạo THÀNH CÔNG (15 Jobs chia 6 ngành nghề) ---');
     return true;
   } catch (error) {
-    console.warn('⚠️ SQLite Native error on Expo Go. Tự động chuyển sang Chế độ Fallback (AsyncStorage):', error);
-    useFallbackMode = true;
-    await initFallbackStorage();
-    return true;
-  }
-};
-
-/**
- * Khởi tạo dữ liệu Fallback trong AsyncStorage
- */
-const initFallbackStorage = async () => {
-  try {
-    await AsyncStorage.setItem(KEYS.JOBS, JSON.stringify(SEED_JOBS));
-
-    const existingUsers = await AsyncStorage.getItem(KEYS.USERS);
-    if (!existingUsers) {
-      await AsyncStorage.setItem(KEYS.USERS, JSON.stringify([]));
-    }
-
-    const existingProf = await AsyncStorage.getItem(KEYS.PROFILE);
-    if (!existingProf) {
-      await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(DEFAULT_PROFILE));
-    }
-
-    const existingApps = await AsyncStorage.getItem(KEYS.APPLICATIONS);
-    if (!existingApps) {
-      await AsyncStorage.setItem(KEYS.APPLICATIONS, JSON.stringify([]));
-    }
-
-    const existingFavs = await AsyncStorage.getItem(KEYS.FAVORITES);
-    if (!existingFavs) {
-      await AsyncStorage.setItem(KEYS.FAVORITES, JSON.stringify([]));
-    }
-  } catch (e) {
-    console.error('Lỗi initFallbackStorage:', e);
+    console.error('Firebase init/seed error:', error);
+    return false;
   }
 };
 
@@ -556,334 +363,227 @@ const initFallbackStorage = async () => {
    MODULE AUTHENTICATION (Đăng ký, Đăng nhập, User Session)
    ========================================================================== */
 
-export const registerUserInDB = async ({ email, password, full_name, phone }) => {
-  const cleanEmail = String(email || '').trim().toLowerCase();
-  const cleanPhone = String(phone || '').trim();
-  const cleanName = String(full_name || '').trim();
-  const cleanPass = String(password || '').trim();
-  const createdAt = new Date().toISOString();
-
-  if (useFallbackMode) {
-    return registerUserFallback({ email: cleanEmail, password: cleanPass, full_name: cleanName, phone: cleanPhone, createdAt });
-  }
-
+export const registerUserInDB = async ({ email, password, full_name, phone, role = 'candidate', company_name = '' }) => {
   try {
-    const db = await getDBConnection();
-    if (!db) {
-      return registerUserFallback({ email: cleanEmail, password: cleanPass, full_name: cleanName, phone: cleanPhone, createdAt });
-    }
-
-    const existing = await db.getFirstAsync('SELECT * FROM users WHERE LOWER(email) = ?;', [cleanEmail]);
-    if (existing) {
-      return { success: false, message: 'Email này đã được đăng ký tài khoản khác!' };
-    }
-
-    const res = await db.runAsync(
-      `INSERT INTO users (email, password, full_name, phone, role, created_at) VALUES (?, ?, ?, ?, 'candidate', ?);`,
-      [cleanEmail, cleanPass, cleanName, cleanPhone, createdAt]
-    );
-
-    const newUser = {
-      id: res.lastInsertRowId,
-      email: cleanEmail,
-      full_name: cleanName,
-      phone: cleanPhone,
-      role: 'candidate',
-      created_at: createdAt,
-    };
-
-    return { success: true, message: 'Đăng ký tài khoản thành công!', user: newUser };
-  } catch (err) {
-    console.warn('Lỗi registerUser SQLite, chuyển sang fallback:', err);
-    return registerUserFallback({ email: cleanEmail, password: cleanPass, full_name: cleanName, phone: cleanPhone, createdAt });
-  }
-};
-
-const registerUserFallback = async ({ email, password, full_name, phone, createdAt }) => {
-  try {
-    const rawUsers = await AsyncStorage.getItem(KEYS.USERS);
-    let users = rawUsers ? JSON.parse(rawUsers) : [];
-
-    const existing = users.find((u) => String(u.email).toLowerCase() === email);
-    if (existing) {
-      return { success: false, message: 'Email này đã được đăng ký tài khoản khác!' };
-    }
-
-    const newUser = {
-      id: Date.now(),
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Update profile on Firebase Auth
+    await updateProfile(user, { displayName: full_name });
+    
+    // Create document in users collection
+    const userData = {
+      uid: user.uid,
       email,
-      password,
       full_name,
       phone,
-      role: 'candidate',
-      created_at: createdAt,
+      role, // 'candidate' or 'employer'
+      company_name: role === 'employer' ? company_name : null,
+      skills: '',
+      bio: '',
+      created_at: serverTimestamp()
     };
-
-    users.push(newUser);
-    await AsyncStorage.setItem(KEYS.USERS, JSON.stringify(users));
-
-    const { password: _, ...userWithoutPass } = newUser;
-    return { success: true, message: 'Đăng ký tài khoản thành công!', user: userWithoutPass };
-  } catch (e) {
-    return { success: false, message: 'Đăng ký thất bại. Vui lòng thử lại!' };
+    
+    await setDoc(doc(db, 'users', user.uid), userData);
+    
+    return { success: true, message: 'Đăng ký tài khoản thành công!', user: userData };
+  } catch (error) {
+    console.warn('registerUserInDB error:', error);
+    let message = 'Đăng ký thất bại. Vui lòng thử lại!';
+    if (error.code === 'auth/email-already-in-use') message = 'Email này đã được đăng ký tài khoản khác!';
+    if (error.code === 'auth/weak-password') message = 'Mật khẩu phải có ít nhất 6 ký tự!';
+    return { success: false, message };
   }
 };
 
 export const loginUserInDB = async (emailOrPhone, password) => {
-  const cleanInput = String(emailOrPhone || '').trim().toLowerCase();
-  const cleanPass = String(password || '').trim();
-
-  if (useFallbackMode) {
-    return loginUserFallback(cleanInput, cleanPass);
-  }
-
   try {
-    const db = await getDBConnection();
-    if (!db) return loginUserFallback(cleanInput, cleanPass);
-
-    const user = await db.getFirstAsync(
-      'SELECT id, email, password, full_name, phone, role, created_at FROM users WHERE (LOWER(email) = ? OR phone = ?) AND password = ?;',
-      [cleanInput, cleanInput, cleanPass]
-    );
-
-    if (!user) {
-      return { success: false, message: 'Email/SĐT hoặc mật khẩu không chính xác!' };
+    let loginEmail = emailOrPhone;
+    
+    // Nếu đầu vào không chứa '@', coi như người dùng nhập số điện thoại
+    if (!emailOrPhone.includes('@')) {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('phone', '==', emailOrPhone));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        // Lấy email tương ứng với số điện thoại trong DB
+        loginEmail = snapshot.docs[0].data().email;
+      } else {
+        return { success: false, message: 'Số điện thoại này chưa được đăng ký!' };
+      }
     }
 
-    const { password: _, ...userWithoutPass } = user;
-    return { success: true, message: 'Đăng nhập thành công!', user: userWithoutPass };
-  } catch (err) {
-    console.warn('Lỗi loginUser SQLite, chuyển sang fallback:', err);
-    return loginUserFallback(cleanInput, cleanPass);
-  }
-};
-
-const loginUserFallback = async (input, pass) => {
-  try {
-    const rawUsers = await AsyncStorage.getItem(KEYS.USERS);
-    const users = rawUsers ? JSON.parse(rawUsers) : [];
-
-    const found = users.find(
-      (u) => (String(u.email).toLowerCase() === input || String(u.phone) === input) && u.password === pass
-    );
-
-    if (!found) {
-      return { success: false, message: 'Email/SĐT hoặc mật khẩu không chính xác!' };
+    const userCredential = await signInWithEmailAndPassword(auth, loginEmail, password);
+    const user = userCredential.user;
+    
+    // Lấy thông tin role từ collection users
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists()) {
+      return { success: true, message: 'Đăng nhập thành công!', user: userDoc.data() };
     }
-
-    const { password: _, ...userWithoutPass } = found;
-    return { success: true, message: 'Đăng nhập thành công!', user: userWithoutPass };
-  } catch (e) {
-    return { success: false, message: 'Đăng nhập thất bại. Vui lòng thử lại!' };
+    return { success: false, message: 'Không tìm thấy thông tin user trong database!' };
+  } catch (error) {
+    console.warn('loginUserInDB error:', error);
+    return { success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' };
   }
 };
 
 /* ==========================================================================
-   MODULE JOBS & PROFILES (Full Categories Matching)
+   MODULE JOBS & PROFILES 
    ========================================================================== */
 
-/**
- * Lấy danh sách jobs (Có bộ lọc ngành nghề chuẩn hóa)
- */
-export const fetchJobsFromDB = async (filters = {}) => {
-  if (useFallbackMode) {
-    return fetchJobsFromFallback(filters);
-  }
-
+export const fetchJobsFromDB = async (filters = {}, lastDoc = null, pageSize = 10) => {
   try {
-    const db = await getDBConnection();
-    if (!db) return fetchJobsFromFallback(filters);
+    const jobsRef = collection(db, 'jobs');
+    let qConstraints = [where('status', '==', 'active')];
 
-    let query = 'SELECT * FROM jobs WHERE 1=1';
-    const params = [];
-
-    if (filters.searchQuery && filters.searchQuery.trim() !== '') {
-      query += ' AND (title LIKE ? OR category LIKE ? OR location LIKE ? OR company_name LIKE ? OR skills_tags LIKE ?)';
-      const term = `%${filters.searchQuery.trim()}%`;
-      params.push(term, term, term, term, term);
-    }
-
+    // Lọc Category
     if (filters.category && filters.category !== 'Tất cả') {
-      query += ' AND LOWER(TRIM(category)) = LOWER(TRIM(?))';
-      params.push(String(filters.category));
+      qConstraints.push(where('category', '==', String(filters.category).trim()));
     }
-
+    
+    // Lọc Work Type
     if (filters.workType && filters.workType !== 'all') {
-      query += ' AND work_type = ?';
-      params.push(String(filters.workType));
+      qConstraints.push(where('work_type', '==', filters.workType));
     }
 
-    if (filters.minSalary && !isNaN(filters.minSalary) && Number(filters.minSalary) > 0) {
-      query += ' AND salary_max >= ?';
-      params.push(Number(filters.minSalary));
+    // Xử lý tìm kiếm và mức lương
+    // Lưu ý Firestore: Chỉ được dùng 1 trường cho toán tử bất phương trình (>=, <=)
+    const hasSearch = filters.searchQuery && filters.searchQuery.trim() !== '';
+    const hasSalary = filters.minSalary && Number(filters.minSalary) > 0;
+
+    if (hasSearch) {
+      const sq = normalizeString(filters.searchQuery);
+      qConstraints.push(where('title_normalized', '>=', sq));
+      qConstraints.push(where('title_normalized', '<=', sq + '\uf8ff'));
+      qConstraints.push(orderBy('title_normalized')); 
+    } else if (hasSalary) {
+      qConstraints.push(where('salary_max', '>=', Number(filters.minSalary)));
+      qConstraints.push(orderBy('salary_max', 'desc'));
     }
 
-    query += ' ORDER BY id ASC;';
+    // Luôn sắp xếp theo created_at giảm dần cuối cùng
+    qConstraints.push(orderBy('created_at', 'desc'));
 
-    const rows = await db.getAllAsync(query, params);
-    const result = (rows || []).map((j) => ({
-      ...j,
-      latitude: Number(j.latitude),
-      longitude: Number(j.longitude),
-    }));
-    return result;
-  } catch (err) {
-    console.warn('Lỗi fetchJobsFromDB SQLite, chuyển sang fallback:', err);
-    useFallbackMode = true;
-    await initFallbackStorage();
-    return fetchJobsFromFallback(filters);
+    if (lastDoc) {
+      qConstraints.push(startAfter(lastDoc));
+    }
+
+    qConstraints.push(limit(pageSize));
+
+    const q = query(jobsRef, ...qConstraints);
+    const snapshot = await getDocs(q);
+    
+    let list = snapshot.docs.map(doc => ({ id: doc.id, docRef: doc, ...doc.data() }));
+    
+    // Lọc client-side cho trường hợp Firestore không hỗ trợ multiple inequality
+    if (hasSearch && hasSalary) {
+      list = list.filter(j => j.salary_max >= Number(filters.minSalary));
+    }
+
+    const newLastDoc = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null;
+
+    return { data: list, lastDoc: newLastDoc };
+  } catch (error) {
+    console.warn('fetchJobsFromDB error:', error);
+    return { data: [], lastDoc: null };
   }
 };
 
-const fetchJobsFromFallback = async (filters = {}) => {
-  try {
-    const raw = await AsyncStorage.getItem(KEYS.JOBS);
-    let list = raw ? JSON.parse(raw) : SEED_JOBS;
+import { onSnapshot } from 'firebase/firestore';
 
+export const subscribeToJobs = (filters, callback) => {
+  const jobsRef = collection(db, 'jobs');
+  
+  const unsubscribe = onSnapshot(query(jobsRef), (snapshot) => {
+    let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Client-side filtering logic
     if (filters.searchQuery && filters.searchQuery.trim() !== '') {
-      const q = filters.searchQuery.trim().toLowerCase();
-      list = list.filter(
-        (j) =>
-          (j.title && j.title.toLowerCase().includes(q)) ||
-          (j.category && j.category.toLowerCase().includes(q)) ||
-          (j.location && j.location.toLowerCase().includes(q)) ||
-          (j.company_name && j.company_name.toLowerCase().includes(q)) ||
-          (j.skills_tags && j.skills_tags.toLowerCase().includes(q))
+      const sq = filters.searchQuery.trim().toLowerCase();
+      list = list.filter(j => 
+        (j.title && j.title.toLowerCase().includes(sq)) ||
+        (j.category && j.category.toLowerCase().includes(sq)) ||
+        (j.location && j.location.toLowerCase().includes(sq)) ||
+        (j.company_name && j.company_name.toLowerCase().includes(sq)) ||
+        (j.skills_tags && j.skills_tags.toLowerCase().includes(sq))
       );
     }
-
+    
     if (filters.category && filters.category !== 'Tất cả') {
       const targetCat = String(filters.category).trim().toLowerCase();
-      list = list.filter((j) => j.category && j.category.trim().toLowerCase() === targetCat);
+      list = list.filter(j => j.category && j.category.trim().toLowerCase() === targetCat);
     }
-
+    
     if (filters.workType && filters.workType !== 'all') {
-      list = list.filter((j) => j.work_type === filters.workType);
+      list = list.filter(j => j.work_type === filters.workType);
     }
-
+    
     if (filters.minSalary && Number(filters.minSalary) > 0) {
-      list = list.filter((j) => j.salary_max >= Number(filters.minSalary));
+      list = list.filter(j => j.salary_max >= Number(filters.minSalary));
     }
+    
+    list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    callback(list);
+  }, (error) => {
+    console.warn('subscribeToJobs error:', error);
+    callback([]);
+  });
 
-    return list.map((j) => ({
-      ...j,
-      latitude: Number(j.latitude),
-      longitude: Number(j.longitude),
-    }));
-  } catch (e) {
-    return SEED_JOBS.map((j) => ({
-      ...j,
-      latitude: Number(j.latitude),
-      longitude: Number(j.longitude),
-    }));
-  }
+  return unsubscribe;
 };
 
-/**
- * Lấy chi tiết job theo ID
- */
 export const fetchJobByIdFromDB = async (id) => {
-  const numericId = Number(id);
-
-  if (useFallbackMode) {
-    const list = await fetchJobsFromFallback();
-    return list.find((j) => Number(j.id) === numericId) || null;
-  }
-
   try {
-    const db = await getDBConnection();
-    if (!db) {
-      const list = await fetchJobsFromFallback();
-      return list.find((j) => Number(j.id) === numericId) || null;
+    const docSnap = await getDoc(doc(db, 'jobs', String(id)));
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
     }
-
-    const job = await db.getFirstAsync('SELECT * FROM jobs WHERE id = ?;', [numericId]);
-    if (job) {
-      return {
-        ...job,
-        latitude: Number(job.latitude),
-        longitude: Number(job.longitude),
-      };
-    }
-
-    const fallbackList = await fetchJobsFromFallback();
-    return fallbackList.find((j) => Number(j.id) === numericId) || null;
-  } catch (err) {
-    const list = await fetchJobsFromFallback();
-    return list.find((j) => Number(j.id) === numericId) || null;
+    return null;
+  } catch (error) {
+    console.warn('fetchJobByIdFromDB error:', error);
+    return null;
   }
 };
 
-/**
- * Lấy hồ sơ ứng viên
- */
 export const fetchProfileFromDB = async () => {
-  if (useFallbackMode) {
-    return fetchProfileFromFallback();
-  }
-
   try {
-    const db = await getDBConnection();
-    if (!db) return fetchProfileFromFallback();
-
-    const profile = await db.getFirstAsync('SELECT * FROM profile WHERE id = 1;');
-    if (profile) return profile;
-    return DEFAULT_PROFILE;
-  } catch (err) {
-    useFallbackMode = true;
-    return fetchProfileFromFallback();
-  }
-};
-
-const fetchProfileFromFallback = async () => {
-  try {
-    const raw = await AsyncStorage.getItem(KEYS.PROFILE);
-    return raw ? JSON.parse(raw) : DEFAULT_PROFILE;
-  } catch (e) {
-    return DEFAULT_PROFILE;
-  }
-};
-
-/**
- * Lưu hồ sơ ứng viên
- */
-export const saveProfileToDB = async (profileData) => {
-  const cleanData = {
-    id: 1,
-    full_name: String(profileData.full_name || ''),
-    phone: String(profileData.phone || ''),
-    email: String(profileData.email || ''),
-    skills: String(profileData.skills || ''),
-    bio: String(profileData.bio || ''),
-    avatar: profileData.avatar ? String(profileData.avatar) : null,
-  };
-
-  try {
-    await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(cleanData));
-  } catch (e) {}
-
-  if (!useFallbackMode) {
-    try {
-      const db = await getDBConnection();
-      if (db) {
-        await db.runAsync(
-          `INSERT OR REPLACE INTO profile (id, full_name, phone, email, skills, bio, avatar) VALUES (1, ?, ?, ?, ?, ?, ?);`,
-          [
-            cleanData.full_name,
-            cleanData.phone,
-            cleanData.email,
-            cleanData.skills,
-            cleanData.bio,
-            cleanData.avatar,
-          ]
-        );
-      }
-    } catch (err) {
-      console.warn('Lỗi saveProfileToDB SQLite, đã lưu qua AsyncStorage fallback:', err);
+    const currentUser = auth.currentUser;
+    if (!currentUser) return null;
+    
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    if (userDoc.exists()) {
+      return userDoc.data();
     }
+    return null;
+  } catch (error) {
+    console.warn('fetchProfileFromDB error:', error);
+    return null;
   }
+};
 
-  return cleanData;
+export const saveProfileToDB = async (profileData) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return null;
+    
+    const userRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userRef, {
+      full_name: profileData.full_name || '',
+      phone: profileData.phone || '',
+      email: profileData.email || '',
+      skills: profileData.skills || '',
+      bio: profileData.bio || '',
+      avatar: profileData.avatar || null,
+    });
+    
+    const updatedDoc = await getDoc(userRef);
+    return updatedDoc.data();
+  } catch (error) {
+    console.warn('saveProfileToDB error:', error);
+    return profileData;
+  }
 };
 
 /* ==========================================================================
@@ -891,177 +591,117 @@ export const saveProfileToDB = async (profileData) => {
    ========================================================================== */
 
 export const fetchApplicationsFromDB = async (userId = null) => {
-  let list = [];
-
-  if (!useFallbackMode) {
-    try {
-      const db = await getDBConnection();
-      if (db) {
-        let query = `
-          SELECT 
-            a.id as application_id,
-            a.user_id,
-            a.job_id,
-            a.status,
-            a.applied_at,
-            j.title,
-            j.company_name,
-            j.company_logo,
-            j.category,
-            j.salary_min,
-            j.salary_max,
-            j.work_type,
-            j.location,
-            j.latitude,
-            j.longitude,
-            j.skills_tags,
-            j.schedule,
-            j.description,
-            j.requirements,
-            j.contact_info,
-            j.created_at
-          FROM applications a
-          JOIN jobs j ON a.job_id = j.id
-        `;
-        const params = [];
-        if (userId) {
-          query += ' WHERE a.user_id = ?';
-          params.push(Number(userId));
-        }
-        query += ' ORDER BY a.id DESC;';
-
-        const rows = await db.getAllAsync(query, params);
-        if (rows && rows.length > 0) {
-          list = rows.map((r) => ({
-            ...r,
-            id: Number(r.job_id),
-            job_id: Number(r.job_id),
-            latitude: Number(r.latitude),
-            longitude: Number(r.longitude),
-          }));
-        }
-      }
-    } catch (err) {
-      console.warn('Lỗi fetchApplicationsFromDB SQLite, chuyển sang fallback:', err);
-    }
-  }
-
-  if (!list || list.length === 0) {
-    list = await fetchApplicationsFromFallback(userId);
-  }
-
-  return list;
-};
-
-const fetchApplicationsFromFallback = async (userId = null) => {
   try {
-    const rawApps = await AsyncStorage.getItem(KEYS.APPLICATIONS);
-    let apps = rawApps ? JSON.parse(rawApps) : [];
-    if (userId) {
-      apps = apps.filter((a) => Number(a.user_id) === Number(userId));
+    const appsRef = collection(db, 'applications');
+    let q;
+    
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    
+    if (uid) {
+      q = query(appsRef, where('candidate_id', '==', uid));
+    } else {
+      q = query(appsRef);
     }
-    const jobs = await fetchJobsFromFallback();
-
-    return apps
-      .map((app) => {
-        const job = jobs.find((j) => Number(j.id) === Number(app.job_id));
-        if (!job) return null;
-        return {
-          ...job,
-          id: Number(job.id),
-          job_id: Number(job.id),
-          application_id: app.id,
-          status: app.status || 'pending',
-          applied_at: app.applied_at,
-        };
-      })
-      .filter(Boolean);
-  } catch (e) {
+    
+    const snapshot = await getDocs(q);
+    const applications = snapshot.docs.map(doc => ({ application_id: doc.id, ...doc.data() }));
+    
+    const results = [];
+    for (const app of applications) {
+      const jobDoc = await getDoc(doc(db, 'jobs', String(app.job_id)));
+      if (jobDoc.exists()) {
+        results.push({
+          ...jobDoc.data(),
+          id: jobDoc.id,
+          job_id: jobDoc.id,
+          application_id: app.application_id,
+          status: app.status,
+          applied_at: app.applied_at
+        });
+      }
+    }
+    
+    return results.sort((a, b) => new Date(b.applied_at) - new Date(a.applied_at));
+  } catch (error) {
+    console.warn('fetchApplicationsFromDB error:', error);
     return [];
   }
 };
 
-export const addApplicationToDB = async (jobId, userId = 1) => {
-  const numJobId = Number(jobId);
-  const numUserId = Number(userId || 1);
-  const appliedAt = new Date().toISOString();
-
-  let apps = [];
+export const addApplicationToDB = async (jobId, userId = null) => {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.APPLICATIONS);
-    apps = raw ? JSON.parse(raw) : [];
-  } catch (e) {}
-
-  const existsFallback = apps.some((a) => Number(a.job_id) === numJobId && Number(a.user_id) === numUserId);
-  if (existsFallback) {
-    return { success: false, message: 'Bạn đã ứng tuyển công việc này rồi!' };
-  }
-
-  const newApp = {
-    id: Date.now(),
-    user_id: numUserId,
-    job_id: numJobId,
-    status: 'pending',
-    applied_at: appliedAt,
-  };
-  apps.unshift(newApp);
-
-  try {
-    await AsyncStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(apps));
-  } catch (e) {}
-
-  if (!useFallbackMode) {
-    try {
-      const db = await getDBConnection();
-      if (db) {
-        const existing = await db.getFirstAsync(
-          'SELECT * FROM applications WHERE job_id = ? AND (user_id = ? OR user_id IS NULL);',
-          [numJobId, numUserId]
-        );
-        if (existing) {
-          return { success: false, message: 'Bạn đã ứng tuyển công việc này rồi!' };
-        }
-        await db.runAsync(
-          'INSERT INTO applications (user_id, job_id, status, applied_at) VALUES (?, ?, ?, ?);',
-          [numUserId, numJobId, 'pending', appliedAt]
-        );
-      }
-    } catch (sqliteErr) {
-      console.warn('SQLite runAsync lỗi native, đã ứng tuyển thành công qua Fallback Storage:', sqliteErr);
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    if (!uid) return { success: false, message: 'Vui lòng đăng nhập!' };
+    
+    const appsRef = collection(db, 'applications');
+    const q = query(appsRef, where('job_id', '==', String(jobId)), where('candidate_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      return { success: false, message: 'Bạn đã ứng tuyển công việc này rồi!' };
     }
-  }
+    
+    const jobDoc = await getDoc(doc(db, 'jobs', String(jobId)));
+    let employer_id = null;
+    if (jobDoc.exists()) {
+       employer_id = jobDoc.data().employer_id || null;
+    }
+    
+    await addDoc(appsRef, {
+      candidate_id: uid,
+      job_id: String(jobId),
+      employer_id: employer_id,
+      status: 'pending',
+      applied_at: new Date().toISOString()
+    });
+    
+    // Gửi Push Notification cho Nhà tuyển dụng
+    if (employer_id) {
+      import('firebase/firestore').then(({ getDoc, doc }) => {
+        getDoc(doc(db, 'users', employer_id)).then((empDoc) => {
+          if (empDoc.exists() && empDoc.data().pushToken) {
+            import('../hooks/usePushNotifications').then(({ sendPushNotification }) => {
+              sendPushNotification(
+                empDoc.data().pushToken,
+                'Có ứng viên mới!',
+                `Một ứng viên vừa nộp đơn vào công việc của bạn.`
+              );
+            });
+          }
+        });
+      });
+    }
 
-  return { success: true, message: 'Ứng tuyển thành công!' };
+    return { success: true, message: 'Ứng tuyển thành công!' };
+  } catch (error) {
+    console.warn('addApplicationToDB error:', error);
+    return { success: false, message: 'Lỗi khi ứng tuyển!' };
+  }
 };
 
-export const cancelApplicationInDB = async (jobId, userId = 1) => {
-  const numJobId = Number(jobId);
-  const numUserId = Number(userId || 1);
-
+export const cancelApplicationInDB = async (jobId, userId = null) => {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.APPLICATIONS);
-    let apps = raw ? JSON.parse(raw) : [];
-    apps = apps.filter((a) => !(Number(a.job_id) === numJobId && Number(a.user_id) === numUserId));
-    await AsyncStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(apps));
-  } catch (e) {
-    console.error('Lỗi cancelApplicationInDB fallback:', e);
-  }
-
-  if (!useFallbackMode) {
-    try {
-      const db = await getDBConnection();
-      if (db) {
-        await db.runAsync('DELETE FROM applications WHERE job_id = ? AND (user_id = ? OR user_id IS NULL);', [
-          numJobId,
-          numUserId,
-        ]);
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    if (!uid) return { success: false, message: 'Vui lòng đăng nhập!' };
+    
+    const appsRef = collection(db, 'applications');
+    const q = query(appsRef, where('job_id', '==', String(jobId)), where('candidate_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      for (const d of snapshot.docs) {
+        await deleteDoc(d.ref);
       }
-    } catch (sqliteErr) {
-      console.warn('SQLite cancelApplication error:', sqliteErr);
     }
+    
+    return { success: true, message: 'Đã hủy đơn ứng tuyển thành công!' };
+  } catch (error) {
+    console.warn('cancelApplicationInDB error:', error);
+    return { success: false, message: 'Lỗi khi hủy đơn!' };
   }
-
-  return { success: true, message: 'Đã hủy đơn ứng tuyển thành công!' };
 };
 
 /* ==========================================================================
@@ -1069,139 +709,279 @@ export const cancelApplicationInDB = async (jobId, userId = 1) => {
    ========================================================================== */
 
 export const fetchFavoritesFromDB = async (userId = null) => {
-  if (useFallbackMode) {
-    return fetchFavoritesFromFallback(userId);
-  }
-
   try {
-    const db = await getDBConnection();
-    if (!db) return fetchFavoritesFromFallback(userId);
-
-    let query = `
-      SELECT j.*
-      FROM favorites f
-      JOIN jobs j ON f.job_id = j.id
-    `;
-    const params = [];
-    if (userId) {
-      query += ' WHERE f.user_id = ?';
-      params.push(Number(userId));
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    if (!uid) return [];
+    
+    const favsRef = collection(db, 'favorites');
+    const q = query(favsRef, where('candidate_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    const results = [];
+    for (const fDoc of snapshot.docs) {
+      const jobId = fDoc.data().job_id;
+      const jobDoc = await getDoc(doc(db, 'jobs', String(jobId)));
+      if (jobDoc.exists()) {
+        results.push({ id: jobDoc.id, ...jobDoc.data() });
+      }
     }
-    query += ' ORDER BY j.id ASC;';
-
-    const rows = await db.getAllAsync(query, params);
-    if (rows && rows.length > 0) {
-      return rows.map((r) => ({
-        ...r,
-        id: Number(r.id),
-        latitude: Number(r.latitude),
-        longitude: Number(r.longitude),
-      }));
-    }
-    return fetchFavoritesFromFallback(userId);
-  } catch (err) {
-    return fetchFavoritesFromFallback(userId);
-  }
-};
-
-const fetchFavoritesFromFallback = async (userId = null) => {
-  try {
-    const rawFavs = await AsyncStorage.getItem(KEYS.FAVORITES);
-    let favs = rawFavs ? JSON.parse(rawFavs) : [];
-    if (userId) {
-      favs = favs.filter((f) => (typeof f === 'object' ? Number(f.user_id) === Number(userId) : true));
-    }
-    const favIds = favs.map((f) => (typeof f === 'object' ? Number(f.job_id) : Number(f)));
-    const jobs = await fetchJobsFromFallback();
-
-    return jobs.filter((j) => favIds.includes(Number(j.id)));
-  } catch (e) {
+    
+    return results;
+  } catch (error) {
+    console.warn('fetchFavoritesFromDB error:', error);
     return [];
   }
 };
 
 export const fetchFavoriteIdsFromDB = async (userId = null) => {
-  if (useFallbackMode) {
-    return fetchFavoriteIdsFromFallback(userId);
-  }
-
   try {
-    const db = await getDBConnection();
-    if (!db) return fetchFavoriteIdsFromFallback(userId);
-
-    let query = 'SELECT job_id FROM favorites';
-    const params = [];
-    if (userId) {
-      query += ' WHERE user_id = ?';
-      params.push(Number(userId));
-    }
-    query += ';';
-
-    const rows = await db.getAllAsync(query, params);
-    return (rows || []).map((r) => Number(r.job_id));
-  } catch (err) {
-    return fetchFavoriteIdsFromFallback(userId);
-  }
-};
-
-const fetchFavoriteIdsFromFallback = async (userId = null) => {
-  try {
-    const raw = await AsyncStorage.getItem(KEYS.FAVORITES);
-    let favs = raw ? JSON.parse(raw) : [];
-    if (userId) {
-      favs = favs.filter((f) => (typeof f === 'object' ? Number(f.user_id) === Number(userId) : true));
-    }
-    return favs.map((f) => (typeof f === 'object' ? Number(f.job_id) : Number(f)));
-  } catch (e) {
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    if (!uid) return [];
+    
+    const favsRef = collection(db, 'favorites');
+    const q = query(favsRef, where('candidate_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => doc.data().job_id);
+  } catch (error) {
+    console.warn('fetchFavoriteIdsFromDB error:', error);
     return [];
   }
 };
 
-export const toggleFavoriteInDB = async (jobId, userId = 1) => {
-  const numJobId = Number(jobId);
-  const numUserId = Number(userId || 1);
-
-  let favs = [];
+export const toggleFavoriteInDB = async (jobId, userId = null) => {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.FAVORITES);
-    favs = raw ? JSON.parse(raw) : [];
-  } catch (e) {}
-
-  const existsFallbackIndex = favs.findIndex(
-    (f) => typeof f === 'object' ? Number(f.job_id) === numJobId && Number(f.user_id) === numUserId : Number(f) === numJobId
-  );
-
-  const exists = existsFallbackIndex !== -1;
-  if (exists) {
-    favs.splice(existsFallbackIndex, 1);
-  } else {
-    favs.push({ user_id: numUserId, job_id: numJobId });
-  }
-
-  try {
-    await AsyncStorage.setItem(KEYS.FAVORITES, JSON.stringify(favs));
-  } catch (e) {}
-
-  if (!useFallbackMode) {
-    try {
-      const db = await getDBConnection();
-      if (db) {
-        if (exists) {
-          await db.runAsync('DELETE FROM favorites WHERE job_id = ? AND (user_id = ? OR user_id IS NULL);', [
-            numJobId,
-            numUserId,
-          ]);
-        } else {
-          await db.runAsync('INSERT INTO favorites (user_id, job_id) VALUES (?, ?);', [numUserId, numJobId]);
-        }
+    const currentUser = auth.currentUser;
+    const uid = (userId && userId !== 1) ? String(userId) : (currentUser ? currentUser.uid : null);
+    if (!uid) return { isFavorite: false, message: 'Vui lòng đăng nhập!' };
+    
+    const favsRef = collection(db, 'favorites');
+    const q = query(favsRef, where('job_id', '==', String(jobId)), where('candidate_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      for (const d of snapshot.docs) {
+        await deleteDoc(d.ref);
       }
-    } catch (sqliteErr) {
-      console.warn('SQLite toggleFavorite lỗi native, đã lưu qua Fallback Storage:', sqliteErr);
+      return { isFavorite: false, message: 'Đã xóa khỏi danh sách yêu thích' };
+    } else {
+      await addDoc(favsRef, {
+        candidate_id: uid,
+        job_id: String(jobId),
+        created_at: new Date().toISOString()
+      });
+      return { isFavorite: true, message: 'Đã lưu vào danh sách yêu thích' };
     }
+  } catch (error) {
+    console.warn('toggleFavoriteInDB error:', error);
+    return { isFavorite: false, message: 'Lỗi thao tác!' };
   }
+};
 
-  return {
-    isFavorite: !exists,
-    message: !exists ? 'Đã lưu vào danh sách yêu thích' : 'Đã xóa khỏi danh sách yêu thích',
-  };
+/* ==========================================================================
+   MODULE EMPLOYER (Nhà tuyển dụng)
+   ========================================================================== */
+
+export const addJobToDB = async (jobData) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return { success: false, message: 'Vui lòng đăng nhập!' };
+
+    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    let companyName = jobData.company_name;
+    if (userDoc.exists() && userDoc.data().company_name) {
+      companyName = userDoc.data().company_name;
+    }
+
+    const jobsRef = collection(db, 'jobs');
+    const newJob = {
+      ...jobData,
+      title_normalized: normalizeString(jobData.title),
+      company_name: companyName,
+      employer_id: currentUser.uid,
+      status: 'active',
+      created_at: new Date().toISOString()
+    };
+    
+    const docRef = await addDoc(jobsRef, newJob);
+    return { success: true, message: 'Đăng tin thành công!', id: docRef.id };
+  } catch (error) {
+    console.warn('addJobToDB error:', error);
+    return { success: false, message: 'Lỗi đăng tin!' };
+  }
+};
+
+export const fetchEmployerJobs = async (employerId = null) => {
+  try {
+    const currentUser = auth.currentUser;
+    const uid = employerId || (currentUser ? currentUser.uid : null);
+    if (!uid) return [];
+
+    const jobsRef = collection(db, 'jobs');
+    const q = query(jobsRef, where('employer_id', '==', uid));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  } catch (error) {
+    console.warn('fetchEmployerJobs error:', error);
+    return [];
+  }
+};
+
+export const fetchJobCandidates = async (employerId = null) => {
+  try {
+    const currentUser = auth.currentUser;
+    const uid = employerId || (currentUser ? currentUser.uid : null);
+    if (!uid) return [];
+
+    const appsRef = collection(db, 'applications');
+    const q = query(appsRef, where('employer_id', '==', uid));
+    const snapshot = await getDocs(q);
+    
+    const applications = snapshot.docs.map(doc => ({ application_id: doc.id, ...doc.data() }));
+    
+    const results = [];
+    for (const app of applications) {
+      const jobDoc = await getDoc(doc(db, 'jobs', String(app.job_id)));
+      const candidateDoc = await getDoc(doc(db, 'users', String(app.candidate_id)));
+      
+      if (jobDoc.exists() && candidateDoc.exists()) {
+        results.push({
+          application_id: app.application_id,
+          status: app.status,
+          applied_at: app.applied_at,
+          job: { id: jobDoc.id, ...jobDoc.data() },
+          candidate: { id: candidateDoc.id, ...candidateDoc.data() }
+        });
+      }
+    }
+    
+    return results.sort((a, b) => new Date(b.applied_at) - new Date(a.applied_at));
+  } catch (error) {
+    console.warn('fetchJobCandidates error:', error);
+    return [];
+  }
+};
+
+export const updateApplicationStatus = async (applicationId, status) => {
+  try {
+    const appRef = doc(db, 'applications', String(applicationId));
+    await updateDoc(appRef, { status });
+    return { success: true, message: `Đã cập nhật trạng thái thành ${status}` };
+  } catch (error) {
+    console.warn('updateApplicationStatus error:', error);
+    return { success: false, message: 'Lỗi cập nhật trạng thái!' };
+  }
+};
+
+/* ==========================================================================
+   MODULE CHAT (Direct Messaging)
+   ========================================================================== */
+
+export const subscribeToChatList = (callback) => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    callback([]);
+    return () => {};
+  }
+  
+  const convRef = collection(db, 'conversations');
+  // Lấy các cuộc trò chuyện mà user hiện tại là thành viên
+  const q = query(convRef, where('participants', 'array-contains', currentUser.uid), orderBy('lastUpdatedAt', 'desc'));
+  
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(list);
+  }, (error) => {
+    console.warn('subscribeToChatList error:', error);
+    callback([]);
+  });
+};
+
+export const subscribeToMessages = (conversationId, callback) => {
+  if (!conversationId) return () => {};
+  
+  const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+  const q = query(messagesRef, orderBy('timestamp', 'asc'));
+  
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(list);
+  }, (error) => {
+    console.warn('subscribeToMessages error:', error);
+    callback([]);
+  });
+};
+
+export const sendMessageToDB = async (conversationId, text, receiverId = null, receiverName = '', receiverAvatar = null) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return false;
+    
+    let targetConvId = conversationId;
+    
+    // Nếu chưa có conversationId, tạo mới
+    if (!targetConvId && receiverId) {
+      const convRef = collection(db, 'conversations');
+      // Thử tìm conversation đã tồn tại
+      const q = query(convRef, where('participants', 'array-contains', currentUser.uid));
+      const snap = await getDocs(q);
+      
+      let existingDoc = snap.docs.find(d => d.data().participants.includes(receiverId));
+      if (existingDoc) {
+        targetConvId = existingDoc.id;
+      } else {
+        const newConv = await addDoc(convRef, {
+          participants: [currentUser.uid, receiverId],
+          participantDetails: {
+            [currentUser.uid]: {
+              name: currentUser.displayName || 'Khách',
+            },
+            [receiverId]: {
+              name: receiverName,
+              avatar: receiverAvatar
+            }
+          },
+          lastMessage: text,
+          lastUpdatedAt: serverTimestamp(),
+        });
+        targetConvId = newConv.id;
+      }
+    }
+    
+    if (!targetConvId) return false;
+    
+    const messagesRef = collection(db, 'conversations', targetConvId, 'messages');
+    await addDoc(messagesRef, {
+      senderId: currentUser.uid,
+      text,
+      timestamp: serverTimestamp()
+    });
+    
+    await updateDoc(doc(db, 'conversations', targetConvId), {
+      lastMessage: text,
+      lastUpdatedAt: serverTimestamp()
+    });
+    
+    // Gửi push notification nếu người nhận có pushToken
+    if (receiverId) {
+       const userDoc = await getDoc(doc(db, 'users', receiverId));
+       if (userDoc.exists() && userDoc.data().pushToken) {
+         import('../hooks/usePushNotifications').then(({ sendPushNotification }) => {
+           sendPushNotification(
+             userDoc.data().pushToken,
+             'Tin nhắn mới',
+             `${currentUser.displayName || 'Khách'}: ${text}`
+           );
+         });
+       }
+    }
+    
+    return targetConvId;
+  } catch (error) {
+    console.warn('sendMessageToDB error:', error);
+    return false;
+  }
 };

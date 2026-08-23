@@ -1,19 +1,26 @@
 # 📱 Ứng dụng Tìm việc Partime/Freelance cho Sinh viên (Đề tài 11)
 
-> **Nền tảng:** React Native (Expo SDK 54) — **Lưu trữ CSDL Dual-Engine:** SQLite (`expo-sqlite`) + AsyncStorage (`@react-native-async-storage/async-storage` Fallback)  
-> **Giao diện:** Modern Deep Teal (`#00667C`) Soft Shadows & Card rounded 16px — **Bản đồ GPS:** `react-native-maps` & `expo-location`  
-> **Điều hướng:** React Navigation (Native Stack + 5 Bottom Tabs) — **Quản lý State:** React Context API  
-> **Hướng tiếp cận:** Hướng A — Dành riêng cho Ứng viên (Candidate-only app với CSDL cục bộ & Seed Data)
+> **Nền tảng:** React Native (Expo SDK 54) — **Lưu trữ CSDL:** Firebase (Cloud Firestore & Authentication)
+> **Giao diện:** Modern Deep Teal (`#00667C`) Soft Shadows & Card rounded 16px — **Bản đồ GPS:** `react-native-maps` & `expo-location`
+> **Điều hướng:** React Navigation (Native Stack + Bottom Tabs đa vai trò) — **Quản lý State:** React Context API
+> **Hướng tiếp cận:** Tích hợp toàn diện Hướng A, B, C (Ứng viên, Nhà tuyển dụng, Vị trí địa lý).
 
 ---
 
 ## 📌 1. Giới thiệu tổng quan
 
-Ứng dụng di động **"Tìm việc Partime/Freelance"** được thiết kế phong cách **Modern Deep Teal (`#00667C`)** chuyên nghiệp, dành riêng cho sinh viên và ứng viên tự do. Ứng dụng tích hợp đầy đủ tính năng tra cứu, tìm kiếm lọc theo bán kính khoảng cách, **xem bản đồ tuyển dụng GPS (Map View Tab)**, logo công ty xác thực, chi tiết bài đăng 3 tab, nộp/hủy đơn ứng tuyển và cập nhật ảnh đại diện cá nhân từ Camera/Thư viện ảnh.
+Ứng dụng di động **"Tìm việc Partime/Freelance"** được thiết kế phong cách **Modern Deep Teal (`#00667C`)** chuyên nghiệp, đóng vai trò như một Sàn giao dịch việc làm thu nhỏ (Marketplace). Ứng dụng tích hợp đầy đủ tính năng tra cứu, tìm kiếm lọc theo bán kính khoảng cách, **xem bản đồ tuyển dụng GPS (Map View Tab)**, nộp/hủy đơn ứng tuyển và quản lý hồ sơ.
 
-Ứng dụng tích hợp cơ chế **Dual-Engine Persistence** độc quyền:
-1. **Engine chính (SQLite Local DB):** Lưu trữ trong CSDL `job_finder.db` thông qua `expo-sqlite` modern API (`openDatabaseAsync`, `execAsync`, `runAsync`, `getAllAsync`, `getFirstAsync`).
-2. **Engine dự phòng (AsyncStorage Fallback):** Tự động kích hoạt khi chạy ứng dụng trên môi trường Expo Go / thiết bị không hỗ trợ SQLite native bridge, đảm bảo **100% ứng dụng không bao giờ bị văng/crash** và mọi thao tác luôn mượt mà.
+Đặc biệt, hệ thống được nâng cấp toàn diện với **Firebase**:
+1. **Phân quyền 2 vai trò:** Hỗ trợ song song tài khoản Ứng viên (Candidate) và Nhà tuyển dụng (Employer) với luồng giao diện tách biệt hoàn toàn.
+2. **Lưu trữ Đám mây toàn diện:** 
+   - **Cloud Firestore:** Dữ liệu ứng tuyển, việc làm, hồ sơ được đồng bộ hóa thời gian thực, có hỗ trợ phân trang (Infinite Scroll).
+   - **Cloud Firestore:** Hỗ trợ lưu trữ ảnh đại diện, logo công ty an toàn thông qua chuỗi Base64 Data URI trực tiếp trên bản ghi.
+3. **Bảo mật tối đa (Security Rules):** Thiết lập `firestore.rules` và `storage.rules` chặt chẽ, bảo vệ dữ liệu theo vai trò và quyền sở hữu.
+4. **Tương tác thời gian thực:**
+   - **Thông báo đẩy (Push Notifications):** Sử dụng Expo Push API gửi thông báo client-to-client khi có đơn ứng tuyển hoặc tin nhắn mới.
+   - **Nhắn tin 1-1 (Direct Messaging):** Tích hợp tính năng Chat trực tiếp giữa ứng viên và nhà tuyển dụng (Realtime qua Firestore).
+5. **Xác thực Đa dạng:** Hỗ trợ đăng nhập linh hoạt bằng Email hoặc Số điện thoại (Firebase Auth).
 
 ---
 
@@ -22,13 +29,14 @@
 | Hạng mục | Công nghệ / Thư viện | Phiên bản | Mô tả vai trò |
 |---|---|---|---|
 | Framework | **React Native / Expo** | ~54.0.35 | Nền tảng ứng dụng di động đa nền tảng (iOS/Android) |
-| Điều hướng | **React Navigation** | ^7.1.8 | Native Stack Navigator & 5 Bottom Tab Navigator |
-| CSDL SQLite | **expo-sqlite** | ~16.0.10 | Quản trị CSDL SQLite cục bộ (bảng `jobs`, `profile`, `applications`, `favorites`) |
+| Điều hướng | **React Navigation** | ^7.1.8 | Native Stack Navigator & Bottom Tab Navigator (Đa nhánh) |
+| Máy chủ / CSDL | **Firebase** | ^11.3.1 | Quản trị CSDL (Firestore), Xác thực (Auth), và Lưu trữ (Storage) |
+| Bảo mật CSDL | **Firebase Rules** | - | Phân quyền truy cập và giới hạn tải tệp qua Firestore/Storage Rules |
 | Bản đồ GPS | **react-native-maps** | ~1.20.1 | Hiển thị ghim việc làm Marker, bong bóng lương & đường đi |
-| Định vị GPS | **expo-location** | ~19.0.7 | Định vị GPS vị trí hiện tại của ứng viên & tính bán kính km |
-| Image Picker | **expo-image-picker** | ~17.0.11 | Chọn ảnh đại diện từ Thư viện thiết bị hoặc Chụp trực tiếp từ Camera |
-| Fallback Storage | **@react-native-async-storage/async-storage** | ~2.2.0 | Bộ lưu trữ dự phòng an toàn tuyệt đối cho Expo Go |
-| Quản lý State | **React Context API** | Built-in | Quản lý & đồng bộ trạng thái ứng dụng toàn cục |
+| Định vị GPS | **expo-location** | ~19.0.7 | Định vị GPS vị trí hiện tại của ứng viên & tính khoảng cách |
+| Thông báo đẩy | **expo-notifications** | ~0.29.11 | Gửi/Nhận thông báo Push Notification client-to-client qua Expo API |
+| Image Picker | **expo-image-picker** | ~17.0.11 | Chọn ảnh tải lên trực tiếp lưu thành Base64 vào Firestore |
+| Quản lý State | **React Context API** | Built-in | Quản lý & đồng bộ trạng thái ứng dụng toàn cục (State Bleeding Fix) |
 | Biểu tượng | **@expo/vector-icons** | ^15.0.3 | Sử dụng bộ icon Ionicons đồng nhất |
 
 ---
@@ -37,40 +45,30 @@
 
 ```
 BT_NhatKyHT/
-├── app/                      # Entry Point cấu hình Expo Router
-│   ├── index.tsx             # Bao bọc AppProvider & render AppNavigator
-│   └── _layout.tsx           # Layout gốc với SafeAreaProvider
-├── docs/                     # Tài liệu thiết kế & Đặc tả SRS
+├── docs/                     # Tài liệu thiết kế & Đặc tả
 │   ├── SRS-DeTai11-TimViecPartimeFreelance.md
-│   └── prompt-de-tai-11-viec-lam.md
-├── src/                      # Toàn bộ Mã nguồn Nền tảng & Màn hình Chức năng
-│   ├── components/           # Component UI dùng chung
-│   │   ├── EmptyState.js     # Trạng thái danh sách rỗng kèm nút gợi ý hành động
-│   │   ├── ErrorState.js     # Trạng thái lỗi truy vấn kèm nút Thử lại
-│   │   ├── JobCard.js        # Thẻ công việc Modern Teal, Logo 44px, Pill kỹ năng (React.memo)
-│   │   ├── LoadingState.js   # Trạng thái màn hình đang tải dữ liệu
-│   │   ├── ScreenWrapper.js  # Wrapper bao bọc màn hình chuẩn SafeArea
-│   │   └── StatusBadge.js    # Badge nhãn trạng thái đơn (Đang chờ, Đã duyệt, Từ chối)
+│   ├── prompt-de-tai-11-viec-lam.md
+│   ├── NguyenVanDeTai11.md
+│   └── BaoCaoKyNangReact.md  # Báo cáo áp dụng kỹ thuật React Native
+├── src/                      # Toàn bộ Mã nguồn Nền tảng
+│   ├── components/           # Component UI dùng chung (JobCard, EmptyState, LoadingState)
+│   ├── config/
+│   │   └── firebase.js       # Khởi tạo kết nối Firebase
 │   ├── context/
-│   │   └── AppContext.js     # Context API quản lý state toàn cục & sync với CSDL
+│   │   └── AppContext.js     # Context API quản lý Session, Jobs, Profile
 │   ├── db/
-│   │   └── database.js       # Module SQLite & AsyncStorage Fallback (Seed 16 việc làm kèm Logo & GPS)
+│   │   └── database.js       # Module tập trung toàn bộ lệnh gọi CRUD tới Firestore
 │   ├── navigation/
-│   │   └── AppNavigator.js   # Bottom Tab Navigator (5 Tab: Home, Map, Saved, Applications, Profile)
-│   ├── screens/              # Các màn hình giao diện người dùng
-│   │   ├── ApplicationsScreen.js # Tab Đơn đã ứng tuyển (có Logo & nút Hủy đơn) (FR-07)
-│   │   ├── FilterScreen.js       # Modal Bộ lọc nâng cao (FR-03)
-│   │   ├── HomeScreen.js         # Tab Trang chủ (Banner Việc hot & Lọc bán kính) (FR-01, FR-02)
-│   │   ├── JobDetailScreen.js    # Chi tiết công việc (Header Teal, Logo đè, 3 Tab & Mini Map) (FR-04, FR-06)
-│   │   ├── MapViewScreen.js      # Tab Bản đồ GPS (Marker việc làm, khoảng cách km & Card Preview)
-│   │   ├── ProfileScreen.js      # Tab Hồ sơ ứng viên (Đổi Avatar Camera/Thư viện & Form Validate) (FR-05)
-│   │   └── SavedScreen.js        # Tab Việc làm đã lưu yêu thích (FR-08)
+│   │   └── AppNavigator.js   # Logic rẽ nhánh: Auth ↔ Candidate Tabs ↔ Employer Tabs
+│   ├── screens/              # Các màn hình giao diện
+│   │   ├── LoginScreen, RegisterScreen # Luồng xác thực
+│   │   ├── HomeScreen, MapViewScreen, ApplicationsScreen, SavedScreen # Luồng Ứng viên
+│   │   ├── EmployerJobsScreen, EmployerPostJobScreen, EmployerCandidatesScreen # Luồng Tuyển dụng
+│   │   └── JobDetailScreen, ProfileScreen, EmployerProfileScreen # Màn hình chung/chi tiết
 │   ├── theme/
-│   │   ├── colors.js         # Palette màu Modern Deep Teal (#00667C), Soft Shadows, Card 16px
-│   │   └── typography.js     # Quy chuẩn cỡ chữ, font-weight và phông nền
+│   │   └── colors.js, typography.js # Chuẩn hóa Palette Teal & Font
 │   └── utils/
-│       ├── formatters.js     # Tiện ích định dạng tiền tệ VNĐ, ngày tháng DD/MM/YYYY
-│       └── validate.js       # Validate client-side cho Form Hồ sơ (Tên, SĐT, Email)
+│       └── formatters.js, validate.js
 ├── package.json
 └── README.md
 ```
@@ -81,20 +79,17 @@ BT_NhatKyHT/
 
 ### Yêu cầu môi trường:
 - Node.js (phiên bản 18+ trở lên)
-- Npm hoặc Yarn
-- Khuyến nghị sử dụng ứng dụng **Expo Go** trên thiết bị thật (iOS/Android) hoặc Android Studio / iOS Simulator.
+- Đã cài đặt Expo CLI (`npm install -g expo-cli`)
 
 ### Các bước thực hiện:
 
-1. **Di chuyển vào thư mục dự án:**
-   ```bash
-   cd d:/Bai-tap-mobile/BT_NhatKyHT
-   ```
-
-2. **Cài đặt các gói phụ thuộc (Dependencies):**
+1. **Cài đặt các gói phụ thuộc (Dependencies):**
    ```bash
    npm install
    ```
+
+2. **Cấu hình Firebase (Tùy chọn):**
+   Tạo file `.env` ở thư mục gốc (nếu chưa có) và cấu hình khóa API Firebase tương ứng.
 
 3. **Khởi chạy máy chủ phát triển Expo:**
    ```bash
@@ -103,24 +98,22 @@ BT_NhatKyHT/
 
 4. **Trải nghiệm ứng dụng:**
    - Quét mã QR bằng ứng dụng **Expo Go** trên điện thoại (Android / iOS).
-   - Nhấn `a` để mở trên Android Emulator hoặc `i` để mở trên iOS Simulator.
-   - Nhấn `w` để chạy thử bản Web Preview.
+   - Có thể dùng tài khoản Ứng viên hoặc đăng ký mới tài khoản Nhà Tuyển dụng để test cả 2 luồng.
 
 ---
 
-## ✅ 5. Danh sách tính năng & Bảng nghiệm thu (Checklist SRS)
+## ✅ 5. Danh sách tính năng (Nghiệm thu)
 
-| Mã FR | Chức năng | Mô tả chi tiết | Trạng thái |
-|---|---|---|---|
-| **FR-01** | Xem danh sách tin tuyển dụng | Tự động tải từ CSDL, hiển thị thẻ JobCard Modern Teal, Logo công ty 44px, Pill kỹ năng, lương nổi bật. | ✅ **Hoàn thành** |
-| **FR-02** | Tìm kiếm tin tuyển dụng | Tìm kiếm theo từ khóa tên việc/công ty/kỹ năng với kỹ thuật **Debounce 300ms** mượt mà. | ✅ **Hoàn thành** |
-| **FR-03** | Lọc tin tuyển dụng | Form chọn ngành nghề, khoảng lương, hình thức (Part-time/Freelance) thực thi truy vấn SQL động. | ✅ **Hoàn thành** |
-| **FR-04** | Xem chi tiết công việc | Header Deep Teal, Logo đè ranh giới, Grid 3 ô chỉ số, Tab 3 mục ("Mô tả", "Thông tin chung", "Công ty") & Mini Map kèm nút Chỉ đường. | ✅ **Hoàn thành** |
-| **FR-05** | Quản lý Hồ sơ & Đổi Avatar | Form nhập thông tin có **Client-side Validation chi tiết**. Avatar tròn nổi bật có nút máy ảnh 📷 đổi ảnh từ **Camera** hoặc **Thư viện ảnh** (`expo-image-picker`), đồng bộ góc Trang chủ. | ✅ **Hoàn thành** |
-| **FR-06** | Ứng tuyển & Hủy ứng tuyển | Nộp đơn 1-touch kèm Popup xác nhận, ngăn nộp trùng đơn cùng job. Bổ sung tính năng **Hủy ứng tuyển** có Alert xác nhận, giải phóng bài đăng để ứng tuyển lại. | ✅ **Hoàn thành** |
-| **FR-07** | Theo dõi trạng thái đơn | Danh sách việc đã ứng tuyển kèm Logo nhà tuyển dụng, **StatusBadge màu sắc** (Đang chờ, Đã duyệt, Từ chối) và nút Hủy đơn nhanh. | ✅ **Hoàn thành** |
-| **FR-08** | Lưu / Bỏ lưu tin yêu thích | Toggle lưu việc làm yêu thích bằng icon trái tim, cập nhật thời gian thực trên tab Đã lưu. | ✅ **Hoàn thành** |
-| **FR-09** | Bản đồ Tuyển dụng GPS | **Tab Bản đồ (`MapViewScreen`)**: Ghim Marker ghim việc làm kèm mức lương, định vị GPS vị trí hiện tại (`expo-location`), tính khoảng cách km và Preview Card trượt ở đáy. | ✅ **Hoàn thành** |
+| Chức năng | Phân luồng | Trạng thái |
+|---|---|---|
+| **Đăng ký / Đăng nhập** | Chung | ✅ Firebase Auth (Email/SĐT) |
+| **Đăng tin tuyển dụng** | Nhà tuyển dụng | ✅ Form tạo tin, GPS tọa độ tự động |
+| **Quản lý Ứng viên** | Nhà tuyển dụng | ✅ Lọc trạng thái, Duyệt/Từ chối CV, **Nhắn tin trực tiếp** |
+| **Tìm việc & Bản đồ** | Ứng viên | ✅ Danh sách FlatList có **Cuộn vô hạn (Infinite Scroll)**, Tìm kiếm Debounce, Mini-map |
+| **Nộp đơn & Lưu tin** | Ứng viên | ✅ Dữ liệu đổ thẳng Firebase, 1 chạm nộp đơn/hủy đơn, **Gửi Thông báo Push tới NTD** |
+| **Quản lý Hồ sơ** | Chung | ✅ Tải ảnh Avatar/Logo lên **Cloud Firestore** bằng Base64, Cập nhật thông tin công ty / CV cá nhân |
+| **Bảo mật & Phân quyền** | Hệ thống | ✅ **Firestore Rules & Storage Rules** (chặn truy cập trái phép) |
+| **Nhắn tin trực tiếp** | Chung | ✅ Màn hình Chat realtime giữa Ứng viên và Nhà tuyển dụng |
 
 ---
-*Tài liệu được hoàn thiện và đóng gói cho Đề tài 11.*
+*Dự án hoàn thiện 100% mục tiêu Đề tài 11.*

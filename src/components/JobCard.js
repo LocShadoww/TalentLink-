@@ -8,7 +8,7 @@ import colors from '../theme/colors';
 import typography from '../theme/typography';
 import { formatSalary, formatDate, getWorkTypeLabel, getWorkTypeStyle } from '../utils/formatters';
 
-const JobCard = ({ job, isFavorite = false, onToggleFavorite, onPress }) => {
+const JobCard = ({ job, isFavorite = false, hideFavorite = false, onToggleFavorite, onPress }) => {
   if (!job) return null;
 
   const badgeStyle = getWorkTypeStyle(job.work_type, colors);
@@ -26,7 +26,7 @@ const JobCard = ({ job, isFavorite = false, onToggleFavorite, onPress }) => {
           source={{
             uri:
               job.company_logo ||
-              'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name || 'Company')}&background=random&color=fff&size=150`,
           }}
           style={styles.companyLogo}
         />
@@ -37,17 +37,19 @@ const JobCard = ({ job, isFavorite = false, onToggleFavorite, onPress }) => {
           <Text style={styles.category}>{job.category}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.favButton}
-          onPress={() => onToggleFavorite && onToggleFavorite(job.id)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={22}
-            color={isFavorite ? colors.error : colors.textMuted}
-          />
-        </TouchableOpacity>
+        {!hideFavorite && (
+          <TouchableOpacity
+            style={styles.favButton}
+            onPress={() => onToggleFavorite && onToggleFavorite(job.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={22}
+              color={isFavorite ? colors.error : colors.textMuted}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Job Title */}

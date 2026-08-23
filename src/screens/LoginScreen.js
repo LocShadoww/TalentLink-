@@ -73,7 +73,7 @@ const LoginScreen = ({ navigation }) => {
       Alert.alert('Thành công 🎉', `Chào mừng ${res.user.full_name} quay trở lại!`, [
         {
           text: 'Bắt đầu ngay',
-          onPress: () => navigation.navigate('MainTabs'),
+          onPress: () => navigation.navigate(res.user.role === 'employer' ? 'EmployerTabs' : 'MainTabs'),
         },
       ]);
     } else {

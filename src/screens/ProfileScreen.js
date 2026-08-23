@@ -29,6 +29,7 @@ import {
   validateEmail,
   validateProfileForm,
 } from '../utils/validate';
+import { uploadImageAsync } from '../utils/uploadImage';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, profile, loadingProfile, updateProfile } = useApp();
@@ -119,14 +120,12 @@ const ProfileScreen = ({ navigation }) => {
         return;
       }
 
-      const mediaTypeOption = ImagePicker.MediaTypeOptions
-        ? ImagePicker.MediaTypeOptions.Images
-        : ['images'];
+      const mediaTypeOption = ['images'];
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: mediaTypeOption,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.4, // Giảm chất lượng để lưu Base64 không bị quá tải
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -161,7 +160,7 @@ const ProfileScreen = ({ navigation }) => {
         mediaTypes: mediaTypeOption,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 0.4,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -176,7 +175,21 @@ const ProfileScreen = ({ navigation }) => {
 
   const saveNewAvatar = async (imageUri) => {
     setUploadingAvatar(true);
-    const updatedForm = { ...formData, avatar: imageUri };
+    
+    // Upload hình lên Firebase Storage (thư mục avatars)
+    let finalUrl = imageUri;
+    if (imageUri.startsWith('file://')) {
+      const uploadedUrl = await uploadImageAsync(imageUri, 'avatars');
+      if (uploadedUrl) {
+        finalUrl = uploadedUrl;
+      } else {
+        setUploadingAvatar(false);
+        Alert.alert('Lỗi', 'Không thể tải ảnh lên máy chủ. Vui lòng thử lại.');
+        return;
+      }
+    }
+
+    const updatedForm = { ...formData, avatar: finalUrl };
     setFormData(updatedForm);
 
     const res = await updateProfile(updatedForm);
