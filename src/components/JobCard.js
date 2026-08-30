@@ -7,12 +7,27 @@ import { Ionicons } from '@expo/vector-icons';
 import colors from '../theme/colors';
 import typography from '../theme/typography';
 import { formatSalary, formatDate, getWorkTypeLabel, getWorkTypeStyle } from '../utils/formatters';
+import { getJobImageSource } from '../utils/imageMapper';
+
+const CATEGORY_MAP = {
+  all: 'Tất cả',
+  it: 'Công nghệ thông tin',
+  fnb: 'Phục vụ Cafe & Trà sữa',
+  sales: 'Bán hàng & Thu ngân',
+  education: 'Gia sư & Trợ giảng',
+  delivery: 'Giao hàng & Lao động',
+};
 
 const JobCard = ({ job, isFavorite = false, hideFavorite = false, onToggleFavorite, onPress }) => {
   if (!job) return null;
 
   const badgeStyle = getWorkTypeStyle(job.work_type, colors);
-  const skillList = job.skills_tags ? job.skills_tags.split(',').map((s) => s.trim()) : [];
+  const skillList = job.skills_tags
+    ? job.skills_tags.split(',').map((s) => s.trim())
+    : (Array.isArray(job.tags) ? job.tags : []);
+
+  const categoryDisplayName =
+    CATEGORY_MAP[job.category] || job.categoryName || job.category || 'Việc làm sinh viên';
 
   return (
     <TouchableOpacity
@@ -23,18 +38,14 @@ const JobCard = ({ job, isFavorite = false, hideFavorite = false, onToggleFavori
       {/* Top Company Row */}
       <View style={styles.companyRow}>
         <Image
-          source={{
-            uri:
-              job.company_logo ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name || 'Company')}&background=random&color=fff&size=150`,
-          }}
+          source={getJobImageSource(job)}
           style={styles.companyLogo}
         />
         <View style={styles.companyInfoGroup}>
           <Text style={styles.companyName} numberOfLines={1}>
-            {job.company_name || 'Nhà tuyển dụng xác thực'}
+            {job.company_name || job.company || 'Nhà tuyển dụng xác thực'}
           </Text>
-          <Text style={styles.category}>{job.category}</Text>
+          <Text style={styles.category}>{categoryDisplayName}</Text>
         </View>
 
         {!hideFavorite && (

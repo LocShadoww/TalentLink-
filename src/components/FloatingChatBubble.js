@@ -1,5 +1,5 @@
 // src/components/FloatingChatBubble.js
-// Component Bong bóng Chat nổi Kéo thả Tự do (Draggable Floating Bubble & Snap to Edge) cho SenBot AI
+// Component Bong bóng Chat nổi Kéo thả Tự do (Draggable Floating Bubble & Emerald Teal Theme Glow)
 
 import React, { useRef } from 'react';
 import {
@@ -10,13 +10,13 @@ import {
   PanResponder,
   Dimensions,
   TouchableOpacity,
+  Image,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import colors from '../theme/colors';
 import typography from '../theme/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BUBBLE_SIZE = 58;
+const BUBBLE_SIZE = 60;
 const INITIAL_X = SCREEN_WIDTH - BUBBLE_SIZE - 16;
 const INITIAL_Y = SCREEN_HEIGHT - BUBBLE_SIZE - 100;
 
@@ -82,15 +82,27 @@ const FloatingChatBubble = ({ onPress }) => {
       {...panResponder.panHandlers}
     >
       <TouchableOpacity
-        style={styles.bubbleInner}
-        activeOpacity={0.9}
+        activeOpacity={0.85}
         onPress={onPress}
       >
-        <Ionicons name="hardware-chip" size={26} color={colors.textLight} />
-        <View style={styles.lotusBadge}>
-          <Text style={styles.lotusBadgeText}>🪷 AI</Text>
+        <View style={styles.outerGlow}>
+          <View style={styles.avatarWrapper}>
+            {/* Hình ảnh Avatar Bé Sen bo tròn hoàn hảo */}
+            <Image
+              source={require('../../assets/images/senbot_float_icon.jpg')}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+
+            {/* Badge AI nhận diện trợ lý thông minh đồng bộ Teal */}
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>AI</Text>
+            </View>
+
+            {/* Chấm tròn trạng thái Online hoạt động góc dưới */}
+            <View style={styles.onlineDot} />
+          </View>
         </View>
-        <View style={styles.onlinePulse} />
       </TouchableOpacity>
     </Animated.View>
   );
@@ -102,50 +114,61 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 999,
-    elevation: 8,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
-  bubbleInner: {
-    width: BUBBLE_SIZE,
-    height: BUBBLE_SIZE,
-    borderRadius: BUBBLE_SIZE / 2,
-    backgroundColor: colors.primaryMain,
+  outerGlow: {
+    padding: 2,
+    borderRadius: 32,
+    backgroundColor: '#006D5B', // Màu thương hiệu Emerald Teal đồng bộ tab bar
+    shadowColor: '#006D5B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  avatarWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2.5,
-    borderColor: colors.surface,
+    overflow: 'visible',
     position: 'relative',
   },
-  lotusBadge: {
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  aiBadge: {
     position: 'absolute',
     top: -5,
     right: -4,
-    backgroundColor: colors.accentAmber,
+    backgroundColor: '#0D9488', // Teal sang trọng đồng bộ hệ sinh thái
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.surface,
-  },
-  lotusBadgeText: {
-    ...typography.styles.badge,
-    fontSize: 9,
-    color: colors.primaryDark,
-    fontWeight: '800',
-  },
-  onlinePulse: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
     borderWidth: 1.5,
-    borderColor: colors.surface,
+    borderColor: '#FFFFFF',
+  },
+  aiBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 1,
+    right: 2,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });
 

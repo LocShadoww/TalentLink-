@@ -1,11 +1,15 @@
 import React from 'react';
-import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppProvider } from '../src/context/AppContext';
+import AppNavigator from '../src/navigation/AppNavigator';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AppProvider>
+        <AppNavigator />
+      </AppProvider>
     </SafeAreaProvider>
   );
 }
+

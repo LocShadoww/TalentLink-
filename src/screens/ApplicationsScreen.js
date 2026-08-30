@@ -12,6 +12,7 @@ import EmptyState from '../components/EmptyState';
 import colors from '../theme/colors';
 import typography from '../theme/typography';
 import { formatSalary, formatDate, getWorkTypeLabel } from '../utils/formatters';
+import { getJobImageSource } from '../utils/imageMapper';
 import { useApp } from '../context/AppContext';
 
 const ApplicationsScreen = ({ navigation }) => {
@@ -67,11 +68,7 @@ const ApplicationsScreen = ({ navigation }) => {
         >
           <View style={styles.cardHeader}>
             <Image
-              source={{
-                uri:
-                  item.company_logo ||
-                  'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
-              }}
+              source={getJobImageSource(item)}
               style={styles.companyLogo}
             />
             <View style={styles.titleGroup}>

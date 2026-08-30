@@ -20,6 +20,7 @@ import ErrorState from '../components/ErrorState';
 import colors from '../theme/colors';
 import typography from '../theme/typography';
 import { formatSalary, formatDate, getWorkTypeLabel } from '../utils/formatters';
+import { getJobImageSource } from '../utils/imageMapper';
 import { fetchJobByIdFromDB } from '../db/database';
 import { useApp } from '../context/AppContext';
 
@@ -276,11 +277,7 @@ const JobDetailScreen = ({ route, navigation }) => {
         <View style={styles.bannerHeroCard}>
           <View style={styles.logoOverlappedBox}>
             <Image
-              source={{
-                uri:
-                  job.company_logo ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(job.company_name || 'Company')}&background=random&color=fff&size=150`,
-              }}
+              source={getJobImageSource(job)}
               style={styles.companyLogo}
             />
           </View>

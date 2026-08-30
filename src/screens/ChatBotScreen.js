@@ -14,6 +14,7 @@ import {
   Platform,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -156,7 +157,10 @@ const ChatBotScreen = ({ navigation }) => {
       <View style={[styles.messageRow, isUser ? styles.userRow : styles.botRow]}>
         {!isUser && (
           <View style={styles.botAvatarCircle}>
-            <Ionicons name="hardware-chip" size={20} color={colors.primaryMain} />
+            <Image
+              source={require('../../assets/images/senbot_avatar.jpg')}
+              style={styles.botAvatarImg}
+            />
           </View>
         )}
 
@@ -192,7 +196,10 @@ const ChatBotScreen = ({ navigation }) => {
 
           <View style={styles.headerTitleGroup}>
             <View style={styles.headerAvatarWrap}>
-              <Ionicons name="hardware-chip" size={22} color={colors.primaryMain} />
+              <Image
+                source={require('../../assets/images/senbot_avatar.jpg')}
+                style={styles.botAvatarImg}
+              />
               <View style={styles.onlineDot} />
             </View>
             <View style={{ marginLeft: 10 }}>
@@ -249,7 +256,10 @@ const ChatBotScreen = ({ navigation }) => {
             loading ? (
               <View style={styles.loadingTypingRow}>
                 <View style={styles.botAvatarCircle}>
-                  <Ionicons name="hardware-chip" size={20} color={colors.primaryMain} />
+                  <Image
+                    source={require('../../assets/images/senbot_avatar.jpg')}
+                    style={styles.botAvatarImg}
+                  />
                 </View>
                 <View style={styles.typingBubble}>
                   <ActivityIndicator size="small" color={colors.primaryMain} />
@@ -387,6 +397,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderWidth: 1,
     borderColor: colors.primaryMain,
+    overflow: 'hidden',
+  },
+  botAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+    resizeMode: 'cover',
   },
   messageGroup: {
     maxWidth: '78%',

@@ -1,5 +1,5 @@
 // src/components/BannerCarousel.js
-// Component Slide Banner Quảng cáo Tự động Trượt (Auto-play Carousel 5.5s - Smooth & Touch Responsive)
+// Component Slide Banner Quảng cáo Tự động Trượt (Bản đồ, Công nghệ IT & Cẩm nang)
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   FlatList,
   StyleSheet,
   Dimensions,
+  ImageBackground,
 } from 'react-native';
 import colors from '../theme/colors';
 import typography from '../theme/typography';
@@ -16,48 +17,51 @@ import typography from '../theme/typography';
 const { width } = Dimensions.get('window');
 const BANNER_WIDTH = width - 32;
 
-const BANNERS = [
+const BANNER_LIST = [
   {
     id: '1',
-    badge: 'BẢN ĐỒ VIỆC LÀM',
-    title: '🔥 Có công việc phù hợp quanh bạn',
-    subtitle: 'Dành riêng cho sinh viên & ứng viên tự do. Tìm việc gần bạn ngay!',
-    bgColor: colors.primaryDark, // #004D5A
-    btnText: 'Xem trên bản đồ GPS ➔',
-    action: 'map',
+    image: require('../../assets/images/banner1.png'),
+    tag: 'BẢN ĐỒ GPS',
+    tagColor: '#10B981',
+    title: 'Tìm Việc Làm Xung Quanh',
+    subtitle: 'Xem vị trí các quán & công ty gần bạn nhất',
+    type: 'MAP',
+    btnText: 'Xem trên bản đồ ➔',
   },
   {
     id: '2',
-    badge: 'CƠ HỘI THỰC TẬP K23-K24',
-    title: '💻 Vị trí Thực tập CNTT & Lập trình Web/App',
-    subtitle: 'Hỗ trợ đóng dấu mộc thực tập, trợ cấp hấp dẫn từ 3.5 - 6 triệu/tháng.',
-    bgColor: '#0F766E', // Teal Cyan Dark
-    btnText: 'Xem việc CNTT ngay ➔',
-    action: 'it_jobs',
+    image: require('../../assets/images/banner2.png'),
+    tag: 'CÔNG NGHỆ IT',
+    tagColor: '#0EA5E9',
+    title: 'Cơ Hội Việc Làm CNTT & Thực Tập',
+    subtitle: 'Lập trình, Web, Thiết kế đồ họa tại Cao Lãnh',
+    type: 'CATEGORY_IT',
+    btnText: 'Xem việc IT ➔',
   },
   {
     id: '3',
-    badge: 'BÍ QUYẾT TÌM VIỆC',
-    title: '🎓 Cẩm nang Phỏng vấn & Viết CV sinh viên DTHU',
-    subtitle: 'Mẹo trả lời câu hỏi khó và bí quyết chinh phục nhà tuyển dụng.',
-    bgColor: '#047857', // Emerald Green Dark
+    image: require('../../assets/images/banner3.jpg'),
+    tag: 'CẨM NANG',
+    tagColor: '#F59E0B',
+    title: 'Cẩm Nang Tìm Việc Sinh Viên',
+    subtitle: 'Kinh nghiệm phỏng vấn, tạo CV và lưu ý an toàn',
+    type: 'HANDBOOK',
     btnText: 'Đọc cẩm nang ➔',
-    action: 'open_tips_modal',
   },
 ];
 
-const BannerCarousel = React.memo(({ navigation, updateFilters, onOpenTipsModal }) => {
+const BannerCarousel = React.memo(({ navigation, updateFilters, onSelectCategory, onOpenTipsModal }) => {
   const flatListRef = useRef(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isUserDragging, setIsUserDragging] = useState(false);
 
-  // Tự động chuyển slide sau mỗi 5.5 giây (Tạm dừng khi người dùng đang tự tay vuốt)
+  // Tự động chuyển slide sau mỗi 5 giây
   useEffect(() => {
     if (isUserDragging) return;
 
     const timer = setInterval(() => {
       setActiveBannerIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % BANNERS.length;
+        const nextIndex = (prevIndex + 1) % BANNER_LIST.length;
         if (flatListRef.current) {
           flatListRef.current.scrollToOffset({
             offset: nextIndex * BANNER_WIDTH,
@@ -66,7 +70,7 @@ const BannerCarousel = React.memo(({ navigation, updateFilters, onOpenTipsModal 
         }
         return nextIndex;
       });
-    }, 5500); // Đặt 5.5s để người dùng thoải mái đọc và chọn nút
+    }, 5000);
 
     return () => clearInterval(timer);
   }, [isUserDragging]);
@@ -75,41 +79,58 @@ const BannerCarousel = React.memo(({ navigation, updateFilters, onOpenTipsModal 
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     if (BANNER_WIDTH > 0) {
       const index = Math.round(contentOffsetX / BANNER_WIDTH);
-      if (index >= 0 && index < BANNERS.length) {
+      if (index >= 0 && index < BANNER_LIST.length) {
         setActiveBannerIndex(index);
       }
     }
   }, []);
 
   const handleBannerAction = useCallback(
-    (action) => {
-      if (action === 'map') {
+    (type) => {
+      if (type === 'MAP') {
         navigation.navigate('MainTabs', { screen: 'MapTab' });
-      } else if (action === 'it_jobs') {
-        updateFilters({ category: 'Công nghệ thông tin' });
-      } else if (action === 'open_tips_modal') {
+      } else if (type === 'CATEGORY_IT') {
+        if (onSelectCategory) {
+          onSelectCategory('it');
+        } else if (updateFilters) {
+          updateFilters({ category: 'Công nghệ thông tin' });
+        }
+      } else if (type === 'HANDBOOK') {
         if (onOpenTipsModal) onOpenTipsModal();
       }
     },
-    [navigation, updateFilters, onOpenTipsModal]
+    [navigation, onSelectCategory, updateFilters, onOpenTipsModal]
   );
 
   const renderBannerItem = useCallback(
     ({ item }) => (
-      <View style={[styles.bannerSlideCard, { backgroundColor: item.bgColor }]}>
-        <View style={styles.bannerBadge}>
-          <Text style={styles.bannerBadgeText}>{item.badge}</Text>
-        </View>
-        <Text style={styles.bannerTitle}>{item.title}</Text>
-        <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
-        <TouchableOpacity
-          style={styles.bannerBtn}
-          onPress={() => handleBannerAction(item.action)}
-          activeOpacity={0.8}
+      <TouchableOpacity
+        style={styles.bannerSlideCard}
+        onPress={() => handleBannerAction(item.type)}
+        activeOpacity={0.9}
+      >
+        <ImageBackground
+          source={item.image}
+          style={styles.bannerImageBackground}
+          imageStyle={styles.bannerImageStyle}
+          resizeMode="cover"
         >
-          <Text style={styles.bannerBtnText}>{item.btnText}</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Lớp phủ bóng mờ nhẹ giúp chữ nổi bật và sắc nét */}
+          <View style={styles.darkGradientOverlay}>
+            <View style={styles.bannerContentContainer}>
+              <View style={[styles.bannerTagBadge, { backgroundColor: item.tagColor }]}>
+                <Text style={styles.bannerTagText}>{item.tag}</Text>
+              </View>
+              <Text style={styles.bannerTitle}>{item.title}</Text>
+              <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
+              
+              <View style={styles.bannerBtn}>
+                <Text style={styles.bannerBtnText}>{item.btnText}</Text>
+              </View>
+            </View>
+          </View>
+        </ImageBackground>
+      </TouchableOpacity>
     ),
     [handleBannerAction]
   );
@@ -118,7 +139,7 @@ const BannerCarousel = React.memo(({ navigation, updateFilters, onOpenTipsModal 
     <View style={styles.carouselWrapper}>
       <FlatList
         ref={flatListRef}
-        data={BANNERS}
+        data={BANNER_LIST}
         keyExtractor={(item) => item.id}
         renderItem={renderBannerItem}
         horizontal
@@ -137,18 +158,11 @@ const BannerCarousel = React.memo(({ navigation, updateFilters, onOpenTipsModal 
           offset: BANNER_WIDTH * index,
           index,
         })}
-        onScrollToIndexFailed={(info) => {
-          setTimeout(() => {
-            flatListRef.current?.scrollToOffset({
-              offset: info.index * BANNER_WIDTH,
-              animated: true,
-            });
-          }, 100);
-        }}
       />
-      {/* Thanh chỉ số vị trí Pagination Dots */}
+
+      {/* Pagination Dots */}
       <View style={styles.paginationDotsContainer}>
-        {BANNERS.map((_, idx) => (
+        {BANNER_LIST.map((_, idx) => (
           <View
             key={idx}
             style={[
@@ -168,52 +182,82 @@ const styles = StyleSheet.create({
   },
   bannerSlideCard: {
     width: BANNER_WIDTH,
-    borderRadius: 20,
-    padding: 18,
-    elevation: 3,
+    height: 160,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+    elevation: 4,
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 8,
   },
-  bannerBadge: {
-    backgroundColor: colors.accentAmber,
-    paddingHorizontal: 10,
+  bannerImageBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  bannerImageStyle: {
+    borderRadius: 18,
+  },
+  darkGradientOverlay: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(15, 23, 42, 0.38)',
+    padding: 16,
+    justifyContent: 'flex-end',
+  },
+  bannerContentContainer: {
+    justifyContent: 'flex-end',
+  },
+  bannerTagBadge: {
+    paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 6,
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  bannerBadgeText: {
+  bannerTagText: {
     ...typography.styles.badge,
     fontSize: 10,
-    color: colors.textPrimary,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   bannerTitle: {
     ...typography.styles.h2,
-    color: colors.textLight,
-    marginBottom: 4,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   bannerSubtitle: {
-    ...typography.styles.body,
-    color: colors.primaryLight,
-    fontSize: 13,
-    marginBottom: 14,
-    lineHeight: 18,
+    ...typography.styles.caption,
+    color: '#E2E8F0',
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bannerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignSelf: 'flex-start',
+    elevation: 2,
   },
   bannerBtnText: {
     ...typography.styles.captionMedium,
     color: colors.primaryDark,
+    fontSize: 12,
     fontWeight: '700',
   },
   paginationDotsContainer: {

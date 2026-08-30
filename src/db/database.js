@@ -326,18 +326,65 @@ export const getDBConnection = async () => {
 };
 
 /**
- * Khởi tạo Database Firebase: Seed jobs nếu collection jobs rỗng
+ * Tự động tìm và xóa sạch các bài đăng test dữ liệu rác (Gia / Đa / Phục vụ...)
  */
-export const initDatabase = async () => {
+export const cleanupTestJobs = async () => {
   try {
     const jobsRef = collection(db, 'jobs');
     const snapshot = await getDocs(query(jobsRef));
-    
-    if (snapshot.empty) {
-      console.log('--- Firebase: jobs collection is empty. Seeding 15 sample jobs... ---');
-      const batch = writeBatch(db);
-      for (const item of SEED_JOBS) {
-        const docRef = doc(jobsRef, String(item.id));
+    const deletePromises = [];
+
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const comp = String(data.company_name || data.company || '').trim();
+      const title = String(data.title || '').trim();
+
+      // CHỈ xóa đúng 3 bài đăng test rác (Gia / Đa / Phục vụ / Phục vụ cafe)
+      const isTest =
+        comp === 'Gia' ||
+        comp === 'gia' ||
+        title === 'Đa' ||
+        title === 'đa' ||
+        title === 'Phục vụ' ||
+        title === 'phục vụ' ||
+        title === 'Phục vụ cafe' ||
+        title === 'phục vụ cafe' ||
+        String(docSnap.id).startsWith('test_');
+
+      if (isTest) {
+        console.log('🗑️ Xóa bài đăng test rác khỏi CSDL:', docSnap.id, title, comp);
+        deletePromises.push(deleteDoc(doc(db, 'jobs', docSnap.id)));
+      }
+    });
+
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises);
+      console.log(`✅ Đã xóa thành công ${deletePromises.length} bài đăng test.`);
+    }
+  } catch (error) {
+    console.warn('cleanupTestJobs error:', error);
+  }
+};
+
+/**
+ * Khởi tạo Database Firebase: Seed & khôi phục đầy đủ 15 tin tuyển dụng chuẩn
+ */
+export const initDatabase = async () => {
+  try {
+    // 1. Dọn dẹp các bài đăng test rác
+    await cleanupTestJobs();
+
+    // 2. Ép nạp & khôi phục đầy đủ 15 bài đăng chuẩn vào Firestore
+    const jobsRef = collection(db, 'jobs');
+    const batch = writeBatch(db);
+    let seededCount = 0;
+
+    for (const item of SEED_JOBS) {
+      const docRef = doc(jobsRef, String(item.id));
+      const docSnap = await getDoc(docRef);
+
+      // Khôi phục nếu bài chuẩn bị thiếu hoặc xóa nhầm
+      if (!docSnap.exists()) {
         batch.set(docRef, {
           ...item,
           title_normalized: normalizeString(item.title),
@@ -346,11 +393,15 @@ export const initDatabase = async () => {
           latitude: Number(item.latitude),
           longitude: Number(item.longitude),
         });
+        seededCount++;
       }
+    }
+
+    if (seededCount > 0) {
       await batch.commit();
-      console.log('--- Seeding completed. ---');
+      console.log(`✅ Đã khôi phục thành công ${seededCount} bài đăng chuẩn vào CSDL!`);
     } else {
-      console.log('--- Firebase: Database đã được khởi tạo ---');
+      console.log('--- Firebase Database: Đã đầy đủ 15 bài đăng chuẩn ---');
     }
     return true;
   } catch (error) {
@@ -476,7 +527,19 @@ export const fetchJobsFromDB = async (filters = {}, lastDoc = null, pageSize = 1
     const snapshot = await getDocs(q);
     
     let list = snapshot.docs.map(doc => ({ id: doc.id, docRef: doc, ...doc.data() }));
-    
+
+    // Lọc bỏ bài đăng rác test (chỉ lọc đúng exact name 'Gia', 'Đa', 'Phục vụ', 'Phục vụ cafe')
+    list = list.filter((j) => {
+      const comp = String(j.company_name || j.company || '').trim();
+      const title = String(j.title || '').trim();
+      if (comp === 'Gia' || comp === 'gia') return false;
+      if (title === 'Đa' || title === 'đa') return false;
+      if (title === 'Phục vụ' || title === 'phục vụ') return false;
+      if (title === 'Phục vụ cafe' || title === 'phục vụ cafe') return false;
+      if (String(j.id).startsWith('test_')) return false;
+      return true;
+    });
+
     // Lọc client-side cho trường hợp Firestore không hỗ trợ multiple inequality
     if (hasSearch && hasSalary) {
       list = list.filter(j => j.salary_max >= Number(filters.minSalary));
@@ -498,6 +561,18 @@ export const subscribeToJobs = (filters, callback) => {
   
   const unsubscribe = onSnapshot(query(jobsRef), (snapshot) => {
     let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Lọc bỏ bài đăng rác test (chỉ lọc đúng exact name 'Gia', 'Đa', 'Phục vụ', 'Phục vụ cafe')
+    list = list.filter((j) => {
+      const comp = String(j.company_name || j.company || '').trim();
+      const title = String(j.title || '').trim();
+      if (comp === 'Gia' || comp === 'gia') return false;
+      if (title === 'Đa' || title === 'đa') return false;
+      if (title === 'Phục vụ' || title === 'phục vụ') return false;
+      if (title === 'Phục vụ cafe' || title === 'phục vụ cafe') return false;
+      if (String(j.id).startsWith('test_')) return false;
+      return true;
+    });
     
     // Client-side filtering logic
     if (filters.searchQuery && filters.searchQuery.trim() !== '') {
