@@ -158,8 +158,9 @@ const ChatBotScreen = ({ navigation }) => {
         {!isUser && (
           <View style={styles.botAvatarCircle}>
             <Image
-              source={require('../../assets/images/senbot_avatar.jpg')}
+              source={require('../../assets/images/besen_loading.jpeg')}
               style={styles.botAvatarImg}
+              resizeMode="cover"
             />
           </View>
         )}
@@ -197,8 +198,9 @@ const ChatBotScreen = ({ navigation }) => {
           <View style={styles.headerTitleGroup}>
             <View style={styles.headerAvatarWrap}>
               <Image
-                source={require('../../assets/images/senbot_avatar.jpg')}
-                style={styles.botAvatarImg}
+                source={require('../../assets/images/besen_loading.jpeg')}
+                style={styles.headerAvatarImg}
+                resizeMode="cover"
               />
               <View style={styles.onlineDot} />
             </View>
@@ -257,8 +259,9 @@ const ChatBotScreen = ({ navigation }) => {
               <View style={styles.loadingTypingRow}>
                 <View style={styles.botAvatarCircle}>
                   <Image
-                    source={require('../../assets/images/senbot_avatar.jpg')}
+                    source={require('../../assets/images/besen_loading.jpeg')}
                     style={styles.botAvatarImg}
+                    resizeMode="cover"
                   />
                 </View>
                 <View style={styles.typingBubble}>
@@ -326,6 +329,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: colors.primaryMain,
+    overflow: 'hidden',
+  },
+  headerAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 19,
+    resizeMode: 'cover',
   },
   onlineDot: {
     position: 'absolute',

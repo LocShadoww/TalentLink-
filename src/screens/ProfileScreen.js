@@ -275,7 +275,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.guestIconCircle}>
               <Ionicons name="person-outline" size={48} color={colors.primaryMain} />
             </View>
-            <Text style={styles.guestTitle}>Chào mừng bạn đến với Đồng Tháp Job Finder!</Text>
+            <Text style={styles.guestTitle}>Chào mừng bạn đến với TalentLink!</Text>
             <Text style={styles.guestDesc}>
               Bạn đang ở Chế độ Khách. Đăng nhập ngay để mở khóa trọn vẹn các tính năng:
             </Text>

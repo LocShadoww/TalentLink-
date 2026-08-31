@@ -101,7 +101,7 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.logoCircle}>
               <Ionicons name="briefcase" size={38} color={colors.primaryMain} />
             </View>
-            <Text style={styles.appTitle}>Đồng Tháp Job Finder</Text>
+            <Text style={styles.appTitle}>TalentLink</Text>
             <Text style={styles.appSubtitle}>Tìm việc part-time & freelance uy tín cho sinh viên</Text>
           </View>
 

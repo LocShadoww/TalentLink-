@@ -184,7 +184,7 @@ const HomeScreen = ({ navigation }) => {
         {/* App Header Title & Candidate Avatar */}
         <View style={styles.topHeader}>
           <View style={styles.greetingGroup}>
-            <Text style={styles.greetingText}>Chào {firstName} 👋</Text>
+            <Text style={styles.greetingText}>Chào {firstName}</Text>
             <Text style={styles.appTitle}>Tìm Việc Sinh Viên</Text>
           </View>
 

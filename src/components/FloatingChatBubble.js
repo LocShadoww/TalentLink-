@@ -89,7 +89,7 @@ const FloatingChatBubble = ({ onPress }) => {
           <View style={styles.avatarWrapper}>
             {/* Hình ảnh Avatar Bé Sen bo tròn hoàn hảo */}
             <Image
-              source={require('../../assets/images/senbot_float_icon.jpg')}
+              source={require('../../assets/images/besen_loading.jpeg')}
               style={styles.avatarImage}
               resizeMode="cover"
             />
