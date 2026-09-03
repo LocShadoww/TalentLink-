@@ -79,14 +79,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
-    marginBottom: 8,
   },
   headerTitle: {
     ...typography.styles.h2,
     color: '#1e293b',
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   chatItem: {
     flexDirection: 'row',
