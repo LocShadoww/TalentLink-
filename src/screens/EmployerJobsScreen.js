@@ -128,10 +128,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   stickyHeader: {
-    padding: 16,
+    padding: 24,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fff',
+    marginBottom: 8,
   },
   stickyHeaderTitle: {
     ...typography.styles.h2,

@@ -184,6 +184,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     backgroundColor: '#fff',
+    marginBottom: 8,
   },
   stickyHeaderTitle: {
     ...typography.styles.h2,
