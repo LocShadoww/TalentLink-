@@ -8,7 +8,7 @@ import colors from '../theme/colors';
 import typography from '../theme/typography';
 
 const ChatDetailScreen = ({ route, navigation }) => {
-  const { conversationId, receiverId, receiverName } = route.params;
+  const { conversationId, receiverId, receiverName, receiverAvatar } = route.params;
   const { user } = useApp();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -29,7 +29,7 @@ const ChatDetailScreen = ({ route, navigation }) => {
     const textToSend = inputText.trim();
     setInputText('');
     
-    const newConvId = await sendMessageToDB(currentConvId, textToSend, receiverId, receiverName);
+    const newConvId = await sendMessageToDB(currentConvId, textToSend, receiverId, receiverName, receiverAvatar);
     if (newConvId && newConvId !== currentConvId) {
       setCurrentConvId(newConvId);
     }
@@ -124,7 +124,9 @@ const styles = StyleSheet.create({
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderBottomLeftRadius: 4,
   },
   messageText: {

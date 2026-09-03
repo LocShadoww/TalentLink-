@@ -29,7 +29,6 @@ import {
   validateEmail,
   validateCompanyName,
 } from '../utils/validate';
-import { uploadImageAsync } from '../utils/uploadImage';
 
 const EmployerProfileScreen = ({ navigation }) => {
   const { user, profile, loadingProfile, updateProfile, logout } = useApp();
@@ -125,10 +124,12 @@ const EmployerProfileScreen = ({ navigation }) => {
               mediaTypes: ['images'],
               allowsEditing: true,
               aspect: [1, 1],
-              quality: 0.4,
+              quality: 0.1,
+              base64: true,
             });
             if (!result.canceled && result.assets?.[0]) {
-              saveNewAvatar(result.assets[0].uri);
+              const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+              saveNewAvatar(base64Img);
             }
           },
         },
@@ -144,10 +145,12 @@ const EmployerProfileScreen = ({ navigation }) => {
               mediaTypes: ['images'],
               allowsEditing: true,
               aspect: [1, 1],
-              quality: 0.4,
+              quality: 0.1,
+              base64: true,
             });
             if (!result.canceled && result.assets?.[0]) {
-              saveNewAvatar(result.assets[0].uri);
+              const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+              saveNewAvatar(base64Img);
             }
           },
         },
@@ -157,21 +160,11 @@ const EmployerProfileScreen = ({ navigation }) => {
     );
   };
 
-  const saveNewAvatar = async (imageUri) => {
+  const saveNewAvatar = async (base64Img) => {
     setUploadingAvatar(true);
     
-    // Upload hình lên Firebase Storage (thư mục company-logos)
-    let finalUrl = imageUri;
-    if (imageUri.startsWith('file://')) {
-      const uploadedUrl = await uploadImageAsync(imageUri, 'company-logos');
-      if (uploadedUrl) {
-        finalUrl = uploadedUrl;
-      } else {
-        setUploadingAvatar(false);
-        Alert.alert('Lỗi', 'Không thể tải ảnh lên máy chủ. Vui lòng thử lại.');
-        return;
-      }
-    }
+    // Save base64 directly to Firestore
+    const finalUrl = base64Img;
 
     const updatedForm = { ...formData, avatar: finalUrl };
     setFormData(updatedForm);
@@ -216,9 +209,7 @@ const EmployerProfileScreen = ({ navigation }) => {
     ]);
   };
 
-  if (loadingProfile) {
-    return <LoadingState message="Đang tải hồ sơ doanh nghiệp..." />;
-  }
+
 
   const isValid = Object.keys(validateForm()).length === 0;
 

@@ -24,7 +24,7 @@ const ApplicationsScreen = ({ navigation }) => {
       if (user) {
         loadApplications(user.uid || user.id);
       }
-    }, [user, loadApplications])
+    }, [user?.uid])
   );
 
   const handleCancelApp = (jobId, title) => {
@@ -119,27 +119,15 @@ const ApplicationsScreen = ({ navigation }) => {
     [navigation, cancelApplication]
   );
 
-  if (loadingApplications && user) {
-    return <LoadingState message="Đang tải danh sách đơn ứng tuyển..." />;
-  }
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <Text style={styles.title}>Đơn đã ứng tuyển</Text>
-      <Text style={styles.subtitle}>
-        {!user
-          ? 'Đăng nhập để theo dõi trạng thái các đơn ứng tuyển của bạn'
-          : applications.length > 0
-          ? `Bạn đã nộp ${applications.length} đơn ứng tuyển công việc`
-          : 'Theo dõi tiến độ và trạng thái các đơn bạn đã gửi'}
-      </Text>
-    </View>
-  );
+
 
   if (!user) {
     return (
       <ScreenWrapper>
-        {renderHeader()}
+        <View style={styles.stickyHeader}>
+          <Text style={styles.stickyHeaderTitle}>Đơn đã ứng tuyển</Text>
+        </View>
         <EmptyState
           icon="lock-closed-outline"
           title="Bạn chưa đăng nhập"
@@ -153,11 +141,13 @@ const ApplicationsScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper>
+      <View style={styles.stickyHeader}>
+        <Text style={styles.stickyHeaderTitle}>Đơn đã ứng tuyển</Text>
+      </View>
       <FlatList
         data={applications}
         keyExtractor={(item, index) => String(item.application_id || item.id || index)}
         renderItem={renderApplicationItem}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState
             icon="document-text-outline"
@@ -185,8 +175,20 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     paddingHorizontal: 16,
+  },
+  stickyHeader: {
+    padding: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fff',
+    marginBottom: 8,
+  },
+  stickyHeaderTitle: {
+    ...typography.styles.h2,
+    color: colors.textPrimary,
   },
   title: {
     ...typography.styles.h1,

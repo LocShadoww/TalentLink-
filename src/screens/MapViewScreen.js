@@ -78,9 +78,9 @@ const MapViewScreen = ({ navigation }) => {
   const loadAllMapJobs = useCallback(async () => {
     setLoadingMap(true);
     try {
-      const data = await fetchJobsFromDB({});
-      if (data && data.length > 0) {
-        setAllMapJobs(data);
+      const response = await fetchJobsFromDB({});
+      if (response && response.data && response.data.length > 0) {
+        setAllMapJobs(response.data);
       } else if (contextJobs && contextJobs.length > 0) {
         setAllMapJobs(contextJobs);
       } else {

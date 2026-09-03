@@ -35,8 +35,8 @@ export const SEED_JOBS = [
     company_name: 'Digital Agency Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=150&q=80',
     category: 'Công nghệ thông tin',
-    salary_min: 3500000,
-    salary_max: 6000000,
+    salary_min: 35000,
+    salary_max: 60000,
     work_type: 'freelance',
     location: 'TP. Cao Lãnh, Đồng Tháp (Hỗ trợ Remote)',
     latitude: 10.455000,
@@ -54,8 +54,8 @@ export const SEED_JOBS = [
     company_name: 'Văn phòng Công nghệ DTHU',
     company_logo: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=150&q=80',
     category: 'Công nghệ thông tin',
-    salary_min: 2500000,
-    salary_max: 4500000,
+    salary_min: 25000,
+    salary_max: 45000,
     work_type: 'internship',
     location: 'Trường Đại học Đồng Tháp (DTHU), Cao Lãnh',
     latitude: 10.421068150262151,
@@ -248,8 +248,8 @@ export const SEED_JOBS = [
     company_name: 'Shop Thời trang Trẻ Cao Lãnh',
     company_logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=150&q=80',
     category: 'Marketing & Truyền thông',
-    salary_min: 2000000,
-    salary_max: 4000000,
+    salary_min: 20000,
+    salary_max: 40000,
     work_type: 'freelance',
     location: 'Khu Di Tích Nguyễn Sinh Sắc, TP. Cao Lãnh',
     latitude: 10.446893862505632,
@@ -267,8 +267,8 @@ export const SEED_JOBS = [
     company_name: 'Khu Ẩm thực Văn Miếu Studio',
     company_logo: 'https://images.unsplash.com/photo-1572021335469-31706a17aaef?auto=format&fit=crop&w=150&q=80',
     category: 'Marketing & Truyền thông',
-    salary_min: 1500000,
-    salary_max: 3000000,
+    salary_min: 15000,
+    salary_max: 30000,
     work_type: 'freelance',
     location: 'Công viên Văn Miếu Cao Lãnh, Đồng Tháp',
     latitude: 10.461376329766749,
@@ -504,12 +504,7 @@ export const fetchJobsFromDB = async (filters = {}, lastDoc = null, pageSize = 1
     const hasSearch = filters.searchQuery && filters.searchQuery.trim() !== '';
     const hasSalary = filters.minSalary && Number(filters.minSalary) > 0;
 
-    if (hasSearch) {
-      const sq = normalizeString(filters.searchQuery);
-      qConstraints.push(where('title_normalized', '>=', sq));
-      qConstraints.push(where('title_normalized', '<=', sq + '\uf8ff'));
-      qConstraints.push(orderBy('title_normalized')); 
-    } else if (hasSalary) {
+    if (hasSalary) {
       qConstraints.push(where('salary_max', '>=', Number(filters.minSalary)));
       qConstraints.push(orderBy('salary_max', 'desc'));
     }
@@ -521,7 +516,8 @@ export const fetchJobsFromDB = async (filters = {}, lastDoc = null, pageSize = 1
       qConstraints.push(startAfter(lastDoc));
     }
 
-    qConstraints.push(limit(pageSize));
+    // Nếu đang tìm kiếm, lấy nhiều hơn để filter local không bị rỗng
+    qConstraints.push(limit(hasSearch ? 50 : pageSize));
 
     const q = query(jobsRef, ...qConstraints);
     const snapshot = await getDocs(q);
@@ -539,6 +535,16 @@ export const fetchJobsFromDB = async (filters = {}, lastDoc = null, pageSize = 1
       if (String(j.id).startsWith('test_')) return false;
       return true;
     });
+
+    // Lọc client-side cho trường hợp tìm kiếm
+    if (hasSearch) {
+      const sq = normalizeString(filters.searchQuery);
+      list = list.filter(j => {
+          const t = normalizeString(j.title || '');
+          const c = normalizeString(j.company_name || j.company || '');
+          return t.includes(sq) || c.includes(sq);
+      });
+    }
 
     // Lọc client-side cho trường hợp Firestore không hỗ trợ multiple inequality
     if (hasSearch && hasSalary) {
@@ -1008,15 +1014,20 @@ export const sendMessageToDB = async (conversationId, text, receiverId = null, r
       if (existingDoc) {
         targetConvId = existingDoc.id;
       } else {
+        const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const currentUserName = currentUserDoc.exists() ? (currentUserDoc.data().full_name || currentUserDoc.data().company_name) : currentUser.displayName;
+        const currentUserAvatar = currentUserDoc.exists() ? (currentUserDoc.data().avatar || currentUserDoc.data().logo) : null;
+
         const newConv = await addDoc(convRef, {
           participants: [currentUser.uid, receiverId],
           participantDetails: {
             [currentUser.uid]: {
-              name: currentUser.displayName || 'Khách',
+              name: currentUserName || 'Khách',
+              avatar: currentUserAvatar || null
             },
             [receiverId]: {
               name: receiverName,
-              avatar: receiverAvatar
+              avatar: receiverAvatar || null
             }
           },
           lastMessage: text,

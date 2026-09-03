@@ -7,7 +7,7 @@ import colors from '../theme/colors';
 import typography from '../theme/typography';
 
 const ChatListScreen = ({ navigation }) => {
-  const { user } = useApp();
+  const { user, profile } = useApp();
   const [conversations, setConversations] = useState([]);
 
   useEffect(() => {
@@ -70,13 +70,20 @@ const ChatListScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   header: {
-    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 8,
   },
   headerTitle: {
     ...typography.styles.h2,
-    color: colors.textPrimary,
+    color: '#1e293b',
   },
   listContent: {
     padding: 16,

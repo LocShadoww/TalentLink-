@@ -19,6 +19,17 @@ const CATEGORY_MAP = {
 };
 
 const JobCard = ({ job, isFavorite = false, hideFavorite = false, onToggleFavorite, onPress }) => {
+  const [localFav, setLocalFav] = React.useState(isFavorite);
+
+  React.useEffect(() => {
+    setLocalFav(isFavorite);
+  }, [isFavorite]);
+
+  const handleToggle = () => {
+    setLocalFav(!localFav);
+    if (onToggleFavorite) onToggleFavorite(job.id);
+  };
+
   if (!job) return null;
 
   const badgeStyle = getWorkTypeStyle(job.work_type, colors);
@@ -51,13 +62,13 @@ const JobCard = ({ job, isFavorite = false, hideFavorite = false, onToggleFavori
         {!hideFavorite && (
           <TouchableOpacity
             style={styles.favButton}
-            onPress={() => onToggleFavorite && onToggleFavorite(job.id)}
+            onPress={handleToggle}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
-              name={isFavorite ? 'heart' : 'heart-outline'}
-              size={22}
-              color={isFavorite ? colors.error : colors.textMuted}
+              name={localFav ? 'heart' : 'heart-outline'}
+              size={24}
+              color={localFav ? colors.error : colors.textMuted}
             />
           </TouchableOpacity>
         )}
@@ -147,7 +158,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   favButton: {
-    padding: 4,
+    padding: 8,
+    alignSelf: 'flex-start',
+    marginTop: -4,
   },
   title: {
     ...typography.styles.h3,

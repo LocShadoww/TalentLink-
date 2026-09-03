@@ -50,7 +50,7 @@ const EmployerCandidatesScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       loadCandidates();
-    }, [loadCandidates])
+    }, [user?.uid])
   );
 
   const onRefresh = async () => {
@@ -92,16 +92,12 @@ const EmployerCandidatesScreen = ({ navigation }) => {
     );
   };
 
-  // Filter and Search logic
-  const filteredApplications = useMemo(() => {
+  // Base filter (Job and Search Query) - Used for stats
+  const baseApplications = useMemo(() => {
     let result = applications;
 
     if (jobFilter !== 'all') {
       result = result.filter(app => app.job?.title === jobFilter);
-    }
-
-    if (statusFilter !== 'all') {
-      result = result.filter(app => app.status === statusFilter);
     }
 
     if (searchQuery.trim() !== '') {
@@ -114,16 +110,24 @@ const EmployerCandidatesScreen = ({ navigation }) => {
     }
 
     return result;
-  }, [applications, searchQuery, statusFilter]);
+  }, [applications, jobFilter, searchQuery]);
+
+  // Final filter (Applying Status) - Used for list rendering
+  const filteredApplications = useMemo(() => {
+    if (statusFilter !== 'all') {
+      return baseApplications.filter(app => app.status === statusFilter);
+    }
+    return baseApplications;
+  }, [baseApplications, statusFilter]);
 
   const stats = useMemo(() => {
     return {
-      total: filteredApplications.length,
-      pending: filteredApplications.filter(a => a.status === 'pending').length,
-      accepted: filteredApplications.filter(a => a.status === 'accepted').length,
-      rejected: filteredApplications.filter(a => a.status === 'rejected').length,
+      total: baseApplications.length,
+      pending: baseApplications.filter(a => a.status === 'pending').length,
+      accepted: baseApplications.filter(a => a.status === 'accepted').length,
+      rejected: baseApplications.filter(a => a.status === 'rejected').length,
     };
-  }, [filteredApplications]);
+  }, [baseApplications]);
 
   const uniqueJobTitles = useMemo(() => {
     const titles = new Set(applications.map(app => app.job?.title).filter(Boolean));
@@ -147,7 +151,11 @@ const EmployerCandidatesScreen = ({ navigation }) => {
     };
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity 
+        style={styles.card} 
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('CandidateProfile', { candidateId: candidate.id })}
+      >
         <View style={styles.cardHeader}>
           <View style={styles.avatarContainer}>
             {candidate?.avatar ? (
@@ -158,10 +166,7 @@ const EmployerCandidatesScreen = ({ navigation }) => {
           </View>
           <View style={styles.candidateInfo}>
             <Text style={styles.candidateName}>{candidate?.full_name || 'Ứng viên'}</Text>
-            <View style={styles.contactRow}>
-              <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.contactText}>{candidate?.phone || 'Chưa cập nhật SĐT'}</Text>
-            </View>
+
             <View style={styles.contactRow}>
               <Ionicons name="mail-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.contactText}>{candidate?.email}</Text>
@@ -176,80 +181,41 @@ const EmployerCandidatesScreen = ({ navigation }) => {
 
         <View style={styles.divider} />
 
-        <View style={styles.jobInfo}>
-          <Text style={styles.jobTitle} numberOfLines={1}>
-            Ứng tuyển: {job?.title}
-          </Text>
-          <Text style={styles.applyDate}>
-            Ngày nộp: {new Date(applied_at).toLocaleDateString('vi-VN')}
-          </Text>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.chatButton}
-          onPress={() => {
-            navigation.navigate('ChatDetail', {
-              conversationId: null,
-              receiverId: candidate.id,
-              receiverName: candidate.full_name || 'Ứng viên'
-            });
-          }}
-        >
-          <Ionicons name="chatbubble-outline" size={16} color={colors.primaryMain} />
-          <Text style={styles.chatButtonText}>Nhắn tin</Text>
-        </TouchableOpacity>
-
-        {isPending && (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.rejectButton]}
-              onPress={() => handleUpdateStatus(item.application_id, 'rejected')}
-            >
-              <Ionicons name="close-circle-outline" size={18} color={colors.error} />
-              <Text style={styles.rejectText}>Từ chối</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={() => handleUpdateStatus(item.application_id, 'accepted')}
-            >
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.textLight} />
-              <Text style={styles.acceptText}>Chấp nhận</Text>
-            </TouchableOpacity>
+        <View style={styles.bottomRow}>
+          <View style={styles.jobInfo}>
+            <Text style={styles.jobTitle} numberOfLines={1}>
+              Ứng tuyển: {job?.title}
+            </Text>
+            <Text style={styles.applyDate}>
+              Ngày nộp: {new Date(applied_at).toLocaleDateString('vi-VN')}
+            </Text>
           </View>
-        )}
-      </View>
+
+          {isPending && (
+            <View style={styles.actionRowCompact}>
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.error + '15' }]}
+                onPress={() => handleUpdateStatus(item.application_id, 'rejected')}
+              >
+                <Ionicons name="close" size={24} color={colors.error} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.success + '15' }]}
+                onPress={() => handleUpdateStatus(item.application_id, 'accepted')}
+              >
+                <Ionicons name="checkmark" size={24} color={colors.success} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
     );
   };
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <Text style={styles.headerTitle}>Quản lý Ứng viên</Text>
-      <Text style={styles.headerSubtitle}>
-        Thống kê và xử lý hồ sơ ứng viên.
-      </Text>
 
-      {/* Stats Cards */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { borderLeftColor: colors.primaryMain }]}>
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Tổng số</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: colors.warning }]}>
-            <Text style={[styles.statNumber, { color: colors.warning }]}>{stats.pending}</Text>
-            <Text style={styles.statLabel}>Chờ duyệt</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
-            <Text style={[styles.statNumber, { color: colors.success }]}>{stats.accepted}</Text>
-            <Text style={styles.statLabel}>Đã nhận</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: colors.error }]}>
-            <Text style={[styles.statNumber, { color: colors.error }]}>{stats.rejected}</Text>
-            <Text style={styles.statLabel}>Từ chối</Text>
-          </View>
-        </View>
-      </ScrollView>
 
       {/* Search & Filter */}
       <View style={styles.filterContainer}>
@@ -268,28 +234,9 @@ const EmployerCandidatesScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
         </View>
-        {/* Filter by Job Title */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {uniqueJobTitles.map((title) => (
-            <TouchableOpacity
-              key={title}
-              style={[
-                styles.filterChip,
-                jobFilter === title && styles.filterChipActive
-              ]}
-              onPress={() => setJobFilter(title)}
-            >
-              <Text style={[
-                styles.filterChipText,
-                jobFilter === title && styles.filterChipTextActive
-              ]}>
-                {title === 'all' ? 'Tất cả việc làm' : title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+
         {/* Filter by Status */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterScroll, { marginTop: 8 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           {['all', 'pending', 'accepted', 'rejected'].map(status => (
             <TouchableOpacity
               key={status}
@@ -312,12 +259,11 @@ const EmployerCandidatesScreen = ({ navigation }) => {
     </View>
   );
 
-  if (loading && !refreshing) {
-    return <LoadingState message="Đang tải danh sách hồ sơ..." />;
-  }
-
   return (
     <ScreenWrapper edges={['top', 'left', 'right']}>
+      <View style={styles.stickyHeader}>
+        <Text style={styles.stickyHeaderTitle}>Hồ sơ Ứng tuyển</Text>
+      </View>
       <View style={styles.container}>
         <FlatList
           data={filteredApplications}
@@ -362,46 +308,38 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-  headerTitle: {
-    ...typography.styles.h1,
-    color: colors.primaryDark,
+  stickyHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
-  headerSubtitle: {
-    ...typography.styles.caption,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 16,
+  stickyHeaderTitle: {
+    ...typography.styles.h2,
+    color: colors.textPrimary,
   },
-  statsScroll: {
-    marginBottom: 16,
-  },
-  statsRow: {
+  statsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    paddingRight: 16,
-  },
-  statCard: {
+    justifyContent: 'space-between',
     backgroundColor: colors.surface,
-    padding: 12,
+    paddingVertical: 12,
     borderRadius: 12,
-    minWidth: 90,
-    borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
   statNumber: {
     ...typography.styles.h2,
-    color: colors.primaryMain,
     marginBottom: 2,
   },
   statLabel: {
     ...typography.styles.caption,
     color: colors.textSecondary,
+    fontSize: 11,
   },
   filterContainer: {
     marginBottom: 16,
@@ -431,9 +369,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: colors.surfaceVariant,
-    marginRight: 8,
     borderWidth: 1,
     borderColor: colors.border,
+    marginRight: 8,
   },
   filterChipActive: {
     backgroundColor: colors.primaryMain,
@@ -511,8 +449,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginVertical: 12,
   },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   jobInfo: {
-    marginBottom: 12,
+    flex: 1,
+    marginRight: 12,
   },
   jobTitle: {
     ...typography.styles.bodyMedium,
@@ -524,54 +468,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 4,
   },
-  actionRow: {
+  actionRowCompact: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     gap: 12,
   },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  rejectButton: {
-    backgroundColor: colors.surface,
-    borderColor: colors.error,
-  },
-  acceptButton: {
-    backgroundColor: colors.primaryMain,
-    borderColor: colors.primaryMain,
-  },
-  rejectText: {
-    ...typography.styles.button,
-    color: colors.error,
-    marginLeft: 6,
-    fontSize: 13,
-  },
-  acceptText: {
-    ...typography.styles.button,
-    color: colors.textLight,
-    marginLeft: 6,
-    fontSize: 13,
-  },
-  chatButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: colors.primaryLight,
-    marginBottom: 12,
-  },
-  chatButtonText: {
-    ...typography.styles.button,
-    color: colors.primaryMain,
-    marginLeft: 6,
-    fontSize: 13,
   },
 });
 

@@ -1,5 +1,4 @@
-// src/screens/ProfileScreen.js
-// Màn hình Hồ sơ ứng viên & Quản lý Tài khoản / Đăng xuất (Auth Integrated)
+// Màn hình hồ sơ ứng viên
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -29,7 +28,6 @@ import {
   validateEmail,
   validateProfileForm,
 } from '../utils/validate';
-import { uploadImageAsync } from '../utils/uploadImage';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, logout, profile, loadingProfile, updateProfile } = useApp();
@@ -48,7 +46,7 @@ const ProfileScreen = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Load thông tin hồ sơ hiện tại từ DB / User state vào form
+  // Tải dữ liệu hồ sơ
   useEffect(() => {
     if (user) {
       setFormData((prev) => ({
@@ -125,12 +123,13 @@ const ProfileScreen = ({ navigation }) => {
         mediaTypes: mediaTypeOption,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.4, // Giảm chất lượng để lưu Base64 không bị quá tải
+        quality: 0.1, // Nén ảnh
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
-        await saveNewAvatar(imageUri);
+        const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        await saveNewAvatar(base64Img);
       }
     } catch (error) {
       console.error('Lỗi Thư viện ảnh:', error);
@@ -153,19 +152,17 @@ const ProfileScreen = ({ navigation }) => {
         return;
       }
 
-      const mediaTypeOption = ImagePicker.MediaTypeOptions
-        ? ImagePicker.MediaTypeOptions.Images
-        : ['images'];
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: mediaTypeOption,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.4,
+        quality: 0.1, // Nén ảnh thật nhẹ
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
-        await saveNewAvatar(imageUri);
+        const base64Img = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        await saveNewAvatar(base64Img);
       }
     } catch (error) {
       console.error('Lỗi Camera:', error);
@@ -173,21 +170,11 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const saveNewAvatar = async (imageUri) => {
+  const saveNewAvatar = async (base64Img) => {
     setUploadingAvatar(true);
     
-    // Upload hình lên Firebase Storage (thư mục avatars)
-    let finalUrl = imageUri;
-    if (imageUri.startsWith('file://')) {
-      const uploadedUrl = await uploadImageAsync(imageUri, 'avatars');
-      if (uploadedUrl) {
-        finalUrl = uploadedUrl;
-      } else {
-        setUploadingAvatar(false);
-        Alert.alert('Lỗi', 'Không thể tải ảnh lên máy chủ. Vui lòng thử lại.');
-        return;
-      }
-    }
+    // Save base64 directly to Firestore
+    const finalUrl = base64Img;
 
     const updatedForm = { ...formData, avatar: finalUrl };
     setFormData(updatedForm);
@@ -262,11 +249,9 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
-  if (loadingProfile) {
-    return <LoadingState message="Đang tải hồ sơ ứng viên..." />;
-  }
 
-  // Nếu Khách chưa đăng nhập -> Hiển thị Banner Chế độ Khách
+
+  // Chưa đăng nhập
   if (!user) {
     return (
       <ScreenWrapper edges={['top', 'left', 'right']}>

@@ -26,6 +26,7 @@ import EmployerJobsScreen from '../screens/EmployerJobsScreen';
 import EmployerPostJobScreen from '../screens/EmployerPostJobScreen';
 import EmployerCandidatesScreen from '../screens/EmployerCandidatesScreen';
 import EmployerProfileScreen from '../screens/EmployerProfileScreen';
+import CandidateProfileScreen from '../screens/CandidateProfileScreen';
 
 import colors from '../theme/colors';
 
@@ -146,6 +147,7 @@ export default function AppNavigator() {
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+      <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
     </Stack.Navigator>
   );
 }

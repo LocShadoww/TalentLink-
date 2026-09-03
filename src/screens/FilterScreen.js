@@ -35,10 +35,10 @@ const WORK_TYPES = [
 
 const SALARY_OPTIONS = [
   { value: 0, label: 'Tất cả mức lương' },
-  { value: 25000, label: 'Từ 25.000 VNĐ' },
-  { value: 50000, label: 'Từ 50.000 VNĐ' },
-  { value: 1000000, label: 'Từ 1.000.000 VNĐ' },
-  { value: 3000000, label: 'Từ 3.000.000 VNĐ' },
+  { value: 20000, label: 'Từ 20.000đ / giờ' },
+  { value: 25000, label: 'Từ 25.000đ / giờ' },
+  { value: 30000, label: 'Từ 30.000đ / giờ' },
+  { value: 50000, label: 'Từ 50.000đ / giờ' },
 ];
 
 const FilterScreen = ({ navigation }) => {
@@ -126,9 +126,9 @@ const FilterScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Section 3: Mức lương tối thiểu */}
+        {/* Section 3: Mức lương tối thiểu (Theo giờ) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Mức lương mong muốn</Text>
+          <Text style={styles.sectionTitle}>Mức lương mong muốn (Theo giờ)</Text>
           <View style={styles.radioList}>
             {SALARY_OPTIONS.map((sal) => {
               const isSelected = selectedMinSalary === sal.value;

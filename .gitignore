@@ -47,3 +47,17 @@ app-example
 # documentation
 docs/
 Nex/
+
+# IDE
+.vscode/
+
+# Agents
+.agents/
+.claude/
+skills-lock.json
+AGENTS.md
+CLAUDE.md
+
+# Firebase Secrets
+google-services.json
+GoogleService-Info.plist

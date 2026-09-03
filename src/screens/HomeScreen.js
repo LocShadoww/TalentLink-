@@ -1,7 +1,7 @@
 // src/screens/HomeScreen.js
-// Màn hình Trang chủ & Tìm kiếm tin tuyển dụng (Strict Filtering & Smooth useMemo Category Filter)
+// Màn hình Trang chủ
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,14 +36,7 @@ const CATEGORIES = [
   { id: 'delivery', name: 'Giao hàng & Lao động' },
 ];
 
-const CATEGORY_MAP = {
-  all: 'Tất cả',
-  it: 'Công nghệ thông tin',
-  fnb: 'Phục vụ Cafe & Trà sữa',
-  sales: 'Bán hàng & Thu ngân',
-  education: 'Gia sư & Trợ giảng',
-  delivery: 'Giao hàng & Lao động',
-};
+
 
 const HANDBOOK_ARTICLES = [
   {
@@ -108,30 +101,29 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [showTipsModal, setShowTipsModal] = useState(false);
 
-  // Debounce tìm kiếm
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (searchInput !== filters.searchQuery) {
-        updateFilters({ searchQuery: searchInput });
-      }
-    }, 500);
-
-    return () => clearTimeout(handler);
-  }, [searchInput]);
-
-  // Pull-to-refresh
+  const handleSearch = () => {
+    updateFilters({ searchQuery: searchInput });
+  };
+  // Kéo xuống để tải lại
   const onRefresh = async () => {
     setRefreshing(true);
     await loadJobs();
     setRefreshing(false);
   };
 
-  // Lọc danh sách công việc bằng useMemo (Đảm bảo luôn hiển thị 15 bài đăng chuẩn)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      updateFilters({ searchQuery: searchInput });
+    }, 800);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput, updateFilters]);
+
+  // Danh sách công việc
   const displayedJobs = useMemo(() => {
-    const rawJobs = (jobs && jobs.length >= 15) ? jobs : JOBS_DATA;
+    const rawJobs = jobs || [];
 
     return rawJobs.filter((job) => {
-      // 1. Lọc theo Ngành nghề
+      // Lọc theo ngành nghề
       const matchCategory =
         !selectedCategory ||
         selectedCategory === 'all' ||
@@ -144,7 +136,7 @@ const HomeScreen = ({ navigation }) => {
         (selectedCategory === 'education' && (job.category === 'education' || (job.categoryName && job.categoryName.includes('Gia sư')))) ||
         (selectedCategory === 'delivery' && (job.category === 'delivery' || (job.categoryName && job.categoryName.includes('Giao hàng'))));
 
-      // 2. Lọc theo Từ khóa tìm kiếm
+      // Lọc theo từ khóa tìm kiếm
       const query = (searchInput || '').trim().toLowerCase();
       const matchSearch =
         !query ||
@@ -158,7 +150,7 @@ const HomeScreen = ({ navigation }) => {
     });
   }, [jobs, selectedCategory, searchInput]);
 
-  // Đếm số lượng bộ lọc đang được kích hoạt
+  // Đếm số bộ lọc
   const activeFilterCount =
     (selectedCategory !== 'all' && selectedCategory !== 'Tất cả' ? 1 : 0) +
     (filters.workType !== 'all' ? 1 : 0) +
@@ -178,125 +170,10 @@ const HomeScreen = ({ navigation }) => {
 
   const firstName = profile?.full_name ? profile.full_name.trim().split(' ').pop() : 'sinh viên';
 
-  const renderHeader = useCallback(
-    () => (
-      <View style={styles.headerContainer}>
-        {/* App Header Title & Candidate Avatar */}
-        <View style={styles.topHeader}>
-          <View style={styles.greetingGroup}>
-            <Text style={styles.greetingText}>Chào {firstName}</Text>
-            <Text style={styles.appTitle}>Tìm Việc Sinh Viên</Text>
-          </View>
+  // Removed renderHeader to extract it to HomeHeader
 
-          <TouchableOpacity
-            style={styles.headerAvatarCircle}
-            onPress={() => navigation.navigate('MainTabs', { screen: 'ProfileTab' })}
-            activeOpacity={0.8}
-          >
-            {profile?.avatar ? (
-              <Image source={{ uri: profile.avatar }} style={styles.headerAvatarImage} />
-            ) : (
-              <Ionicons name="person" size={20} color={colors.primaryMain} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Slide Banner Quảng cáo Tự động Trượt */}
-        <BannerCarousel
-          navigation={navigation}
-          updateFilters={updateFilters}
-          onSelectCategory={(catId) => setSelectedCategory(catId)}
-          onOpenTipsModal={() => setShowTipsModal(true)}
-        />
-
-        {/* Thanh Tìm kiếm & Nút Lọc */}
-        <View style={styles.searchBarRow}>
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search-outline" size={20} color={colors.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Tìm việc, công ty, kỹ năng (React, Canva...)"
-              placeholderTextColor={colors.textMuted}
-              value={searchInput}
-              onChangeText={setSearchInput}
-              returnKeyType="search"
-              numberOfLines={1}
-            />
-            {searchInput.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchInput('')} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              activeFilterCount > 0 && styles.filterButtonActive,
-            ]}
-            onPress={() => navigation.navigate('Filter')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="options-outline"
-              size={22}
-              color={activeFilterCount > 0 ? colors.textLight : colors.primaryMain}
-            />
-            {activeFilterCount > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Danh mục ngành nghề nằm ngang */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
-          {CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id || (selectedCategory === 'all' && cat.id === 'all');
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryChip,
-                  isSelected && styles.categoryChipSelected,
-                ]}
-                onPress={() => setSelectedCategory(cat.id)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    isSelected && styles.categoryTextSelected,
-                  ]}
-                >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Tiêu đề danh sách & số lượng chuẩn sau khi lọc */}
-        <View style={styles.listHeaderRow}>
-          <Text style={styles.sectionTitle}>
-            {selectedCategory !== 'all' && selectedCategory !== 'Tất cả'
-              ? `Việc làm ${CATEGORIES.find((c) => c.id === selectedCategory)?.name || selectedCategory}`
-              : 'Danh sách việc làm tốt nhất'}
-          </Text>
-          <Text style={styles.jobCountText}>{displayedJobs.length} bài đăng</Text>
-        </View>
-      </View>
-    ),
-    [firstName, profile, searchInput, activeFilterCount, selectedCategory, updateFilters, displayedJobs.length, navigation]
-  );
-
-  if (loadingJobs && !refreshing) {
-    return <LoadingState message="Đang tìm kiếm tin tuyển dụng..." />;
+  if (loadingJobs && !refreshing && (!jobs || jobs.length === 0)) {
+    return <LoadingState message="Đang tải dữ liệu..." />;
   }
 
   if (errorJobs && !refreshing) {
@@ -315,10 +192,25 @@ const HomeScreen = ({ navigation }) => {
         data={displayedJobs}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderJobItem}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={
+          <HomeHeader
+            firstName={firstName}
+            profile={profile}
+            navigation={navigation}
+            updateFilters={updateFilters}
+            setSelectedCategory={setSelectedCategory}
+            setShowTipsModal={setShowTipsModal}
+            searchInput={searchInput}
+            setSearchInput={setSearchInput}
+            onSearchSubmit={handleSearch}
+            activeFilterCount={activeFilterCount}
+            selectedCategory={selectedCategory}
+            displayedJobsCount={displayedJobs.length}
+          />
+        }
         onEndReached={loadMoreJobs}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={loadingMoreJobs ? <LoadingState /> : null}
+        ListFooterComponent={(loadingMoreJobs || (loadingJobs && jobs && jobs.length > 0)) ? <LoadingState /> : null}
         ListEmptyComponent={
           <EmptyState
             icon="search-outline"
@@ -348,10 +240,10 @@ const HomeScreen = ({ navigation }) => {
         }
       />
 
-      {/* Bong bóng Chat Nổi Kéo Thả Tự Do (SenBot AI) */}
+      {/* Nút Chatbot */}
       <FloatingChatBubble onPress={() => navigation.navigate('ChatBot')} />
 
-      {/* Modal Cẩm Nang Tìm Việc Sinh Viên (Handbook Modal) */}
+      {/* Modal Cẩm nang */}
       <Modal
         visible={showTipsModal}
         animationType="slide"
@@ -378,7 +270,7 @@ const HomeScreen = ({ navigation }) => {
               Bí quyết phỏng vấn, tạo CV ấn tượng & lưu ý an toàn cho sinh viên DTHU
             </Text>
 
-            {/* Danh sách 4 bài viết cẩm nang */}
+            {/* Danh sách bài viết */}
             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScrollBody}>
               {HANDBOOK_ARTICLES.map((article) => (
                 <View key={article.id} style={styles.articleCard}>
@@ -396,7 +288,7 @@ const HomeScreen = ({ navigation }) => {
               ))}
             </ScrollView>
 
-            {/* Bottom Action Button */}
+            {/* Nút đóng modal */}
             <TouchableOpacity
               style={styles.modalCloseBtn}
               onPress={() => setShowTipsModal(false)}
@@ -410,6 +302,143 @@ const HomeScreen = ({ navigation }) => {
     </ScreenWrapper>
   );
 };
+
+const HomeHeader = React.memo(({
+  firstName,
+  profile,
+  navigation,
+  updateFilters,
+  setSelectedCategory,
+  setShowTipsModal,
+  searchInput,
+  setSearchInput,
+  onSearchSubmit,
+  activeFilterCount,
+  selectedCategory,
+  displayedJobsCount
+}) => {
+  return (
+    <View style={styles.headerContainer}>
+      {/* Tiêu đề & Avatar */}
+      <View style={styles.topHeader}>
+        <View style={styles.greetingGroup}>
+          <Text style={styles.greetingText}>Chào {firstName}</Text>
+          <Text style={styles.appTitle}>Tìm Việc Sinh Viên</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.headerAvatarCircle}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'ProfileTab' })}
+          activeOpacity={0.8}
+        >
+          {profile?.avatar ? (
+            <Image source={{ uri: profile.avatar }} style={styles.headerAvatarImage} />
+          ) : (
+            <Ionicons name="person" size={20} color={colors.primaryMain} />
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Banner quảng cáo */}
+      <BannerCarousel
+        navigation={navigation}
+        updateFilters={updateFilters}
+        onSelectCategory={(catId) => setSelectedCategory(catId)}
+        onOpenTipsModal={() => setShowTipsModal(true)}
+      />
+
+      {/* Thanh tìm kiếm & Lọc */}
+      <View style={styles.searchBarRow}>
+        <View style={styles.searchInputContainer}>
+          <TouchableOpacity onPress={onSearchSubmit} style={styles.searchIcon}>
+            <Ionicons name="search" size={20} color={colors.primaryMain} />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Tìm việc, công ty, kỹ năng..."
+            placeholderTextColor={colors.textMuted}
+            value={searchInput}
+            onChangeText={setSearchInput}
+            returnKeyType="search"
+            onSubmitEditing={onSearchSubmit}
+            numberOfLines={1}
+          />
+          {searchInput.length > 0 && (
+            <TouchableOpacity onPress={() => {
+              setSearchInput('');
+              updateFilters({ searchQuery: '' });
+            }} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            activeFilterCount > 0 && styles.filterButtonActive,
+          ]}
+          onPress={() => navigation.navigate('Filter')}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="options-outline"
+            size={22}
+            color={activeFilterCount > 0 ? colors.textLight : colors.primaryMain}
+          />
+          {activeFilterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Danh mục ngành nghề */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryScroll}
+      >
+        {CATEGORIES.map((cat) => {
+          const isSelected = selectedCategory === cat.id || (selectedCategory === 'all' && cat.id === 'all');
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.categoryChip,
+                isSelected && styles.categoryChipSelected,
+              ]}
+              onPress={() => setSelectedCategory(cat.id)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  isSelected && styles.categoryTextSelected,
+                ]}
+              >
+                {cat.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Tiêu đề danh sách & Số lượng */}
+      <View style={styles.listHeaderRow}>
+        <Text style={styles.sectionTitle}>
+          {selectedCategory !== 'all' && selectedCategory !== 'Tất cả'
+            ? `Việc làm ${CATEGORIES.find((c) => c.id === selectedCategory)?.name || selectedCategory}`
+            : 'Danh sách việc làm tốt nhất'}
+        </Text>
+        <Text style={styles.jobCountText}>{displayedJobsCount} bài đăng</Text>
+      </View>
+    </View>
+  );
+});
+
+HomeHeader.displayName = 'HomeHeader';
 
 const styles = StyleSheet.create({
   listContent: {

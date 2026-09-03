@@ -3,6 +3,9 @@
 
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { doc, updateDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { db, auth } from '../config/firebase';
 import {
   initDatabase,
   registerUserInDB,
@@ -188,7 +191,7 @@ export const AppProvider = ({ children }) => {
   const initApp = useCallback(async () => {
     try {
       setDbError(null);
-      await initDatabase();
+      // await initDatabase();
       setDbReady(true);
 
       await loadUserSession();
@@ -275,6 +278,19 @@ export const AppProvider = ({ children }) => {
    */
   const logout = async () => {
     try {
+      if (user?.uid || user?.id) {
+        try {
+          const docRef = doc(db, 'users', user.uid || user.id);
+          await updateDoc(docRef, { pushToken: null });
+        } catch(err) {
+          console.warn('Lỗi xoá pushToken khi đăng xuất:', err);
+        }
+        try {
+          await signOut(auth);
+        } catch (err) {
+          console.warn('Lỗi signOut khi đăng xuất:', err);
+        }
+      }
       await AsyncStorage.removeItem('@current_user');
       setUser(null);
       setProfile(null);

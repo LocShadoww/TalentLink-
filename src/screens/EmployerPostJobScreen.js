@@ -119,7 +119,7 @@ const EmployerPostJobScreen = ({ navigation }) => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.5,
+        quality: 0.1,
         base64: true,
       });
       if (!result.canceled && result.assets?.[0]) {
@@ -185,6 +185,9 @@ const EmployerPostJobScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper edges={['top', 'bottom', 'left', 'right']}>
+      <View style={styles.stickyHeader}>
+        <Text style={styles.stickyHeaderTitle}>Tạo Tin Tuyển Dụng</Text>
+      </View>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -194,8 +197,6 @@ const EmployerPostJobScreen = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.headerTitle}>Tạo Tin Tuyển Dụng</Text>
-          <Text style={styles.headerSubtitle}>Điền thông tin chi tiết để thu hút ứng viên</Text>
 
           {/* Hình minh họa / Logo công việc */}
           <View style={styles.inputGroup}>
@@ -404,6 +405,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
+  },
+  stickyHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  stickyHeaderTitle: {
+    ...typography.styles.h2,
+    color: colors.textPrimary,
   },
   headerTitle: {
     ...typography.styles.h1,

@@ -440,7 +440,8 @@ const JobDetailScreen = ({ route, navigation }) => {
                   navigation.navigate('ChatDetail', {
                     conversationId: null,
                     receiverId: job.employer_id,
-                    receiverName: job.company_name || 'Nhà tuyển dụng'
+                    receiverName: job.company_name || 'Nhà tuyển dụng',
+                    receiverAvatar: job.company_logo || job.logo || null
                   });
                 }}
               >
@@ -457,7 +458,7 @@ const JobDetailScreen = ({ route, navigation }) => {
             <View style={styles.miniMapHeader}>
               <View style={styles.miniMapTitleGroup}>
                 <Ionicons name="map-outline" size={18} color={colors.primaryMain} />
-                <Text style={styles.miniMapTitle}>Vị trí tuyển dụng trên bản đồ</Text>
+                <Text style={styles.miniMapTitle}>Vị trí</Text>
               </View>
               <TouchableOpacity style={styles.navigateBtn} onPress={handleOpenNavigation}>
                 <Ionicons name="navigate-outline" size={14} color={colors.primaryMain} />

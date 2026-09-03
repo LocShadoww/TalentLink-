@@ -21,7 +21,7 @@ const SavedScreen = ({ navigation }) => {
       if (user) {
         loadFavorites(user.uid || user.id);
       }
-    }, [user, loadFavorites])
+    }, [user?.uid])
   );
 
   const handleToggleFav = (jobId) => {
@@ -44,27 +44,15 @@ const SavedScreen = ({ navigation }) => {
     [isFavorite, handleToggleFav, navigation]
   );
 
-  if (loadingFavorites && user) {
-    return <LoadingState message="Đang tải danh sách tin đã lưu..." />;
-  }
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <Text style={styles.title}>Tin tuyển dụng đã lưu</Text>
-      <Text style={styles.subtitle}>
-        {!user
-          ? 'Đăng nhập để xem danh sách các tin tuyển dụng bạn đã lưu'
-          : favorites.length > 0
-          ? `Bạn đã lưu ${favorites.length} công việc để xem lại sau`
-          : 'Quản lý danh sách các việc làm bạn quan tâm'}
-      </Text>
-    </View>
-  );
+
 
   if (!user) {
     return (
       <ScreenWrapper>
-        {renderHeader()}
+        <View style={styles.stickyHeader}>
+          <Text style={styles.stickyHeaderTitle}>Tin tuyển dụng đã lưu</Text>
+        </View>
         <EmptyState
           icon="lock-closed-outline"
           title="Bạn chưa đăng nhập"
@@ -78,11 +66,13 @@ const SavedScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper>
+      <View style={styles.stickyHeader}>
+        <Text style={styles.stickyHeaderTitle}>Tin tuyển dụng đã lưu</Text>
+      </View>
       <FlatList
         data={favorites}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderJobItem}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <EmptyState
             icon="heart-dislike-outline"
@@ -110,8 +100,20 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
     paddingHorizontal: 16,
+  },
+  stickyHeader: {
+    padding: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#fff',
+    marginBottom: 8,
+  },
+  stickyHeaderTitle: {
+    ...typography.styles.h2,
+    color: colors.textPrimary,
   },
   title: {
     ...typography.styles.h1,

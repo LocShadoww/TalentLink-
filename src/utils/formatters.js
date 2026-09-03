@@ -7,23 +7,21 @@
 export const formatSalary = (min, max) => {
   if (!min && !max) return 'Thỏa thuận';
 
-  const formatNumber = (num) => {
+  const formatK = (num) => {
     if (!num) return '0';
-    return num.toLocaleString('vi-VN');
+    if (num >= 1000) return `${Math.round(num / 1000)}k`;
+    return `${num}k`;
   };
 
   if (min && max) {
-    if (min >= 1000000 && max >= 1000000) {
-      return `${(min / 1000000).toFixed(1)} tr - ${(max / 1000000).toFixed(1)} triệu VNĐ`;
-    }
-    return `${formatNumber(min)} - ${formatNumber(max)} VNĐ`;
+    return `${formatK(min)} - ${formatK(max)}/h`;
   }
 
   if (min) {
-    return `Từ ${formatNumber(min)} VNĐ`;
+    return `Từ ${formatK(min)}/h`;
   }
 
-  return `Tới ${formatNumber(max)} VNĐ`;
+  return `Tới ${formatK(max)}/h`;
 };
 
 /**
@@ -36,24 +34,14 @@ export const formatMarkerSalary = (job) => {
 
   if (!min && !max) return '\u00A0Thỏa thuận\u00A0';
 
-  let str = 'Thỏa thuận';
-
-  // Lương triệu (Tháng / Dự án)
-  if (max >= 1000000 || min >= 1000000) {
-    const targetVal = max || min;
-    const val = (targetVal / 1000000).toFixed(1).replace('.0', '');
-    str = `${val}tr/th`;
-  }
-  // Lương nghìn (Giờ / Ca)
-  else if (max >= 1000 || min >= 1000) {
-    const targetVal = max || min;
-    const val = Math.round(targetVal / 1000);
-    if (job.work_type === 'freelance') str = `${val}k/dự án`;
-    else if (job.work_type === 'internship') str = `${val}k/buổi`;
-    else str = `${val}k/h`;
+  const targetVal = max || min;
+  let val = targetVal;
+  
+  if (targetVal >= 1000) {
+    val = Math.round(targetVal / 1000);
   }
 
-  return `\u00A0${str}\u00A0`;
+  return `\u00A0${val}k/h\u00A0`;
 };
 
 /**

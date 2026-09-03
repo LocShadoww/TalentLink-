@@ -53,7 +53,6 @@ const EmployerJobsScreen = ({ navigation }) => {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <Text style={styles.headerTitle}>Quản lý tin tuyển dụng</Text>
       <Text style={styles.headerSubtitle}>
         Bạn đã đăng {jobs.length} tin tuyển dụng.
       </Text>
@@ -66,6 +65,9 @@ const EmployerJobsScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper edges={['top', 'left', 'right']}>
+      <View style={styles.stickyHeader}>
+        <Text style={styles.stickyHeaderTitle}>Quản lý tin tuyển dụng</Text>
+      </View>
       <View style={styles.container}>
         <FlatList
           data={jobs}
@@ -122,12 +124,18 @@ const styles = StyleSheet.create({
     paddingBottom: 80, // Để chừa chỗ cho FAB
   },
   headerContainer: {
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
-  headerTitle: {
-    ...typography.styles.h1,
-    color: colors.primaryDark,
+  stickyHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  stickyHeaderTitle: {
+    ...typography.styles.h2,
+    color: colors.textPrimary,
   },
   headerSubtitle: {
     ...typography.styles.caption,
